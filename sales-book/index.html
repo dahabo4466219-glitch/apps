@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Book</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{--n:#0f2a4a;--r:#c8372d;--g:#1f7a4d;--l:#e3e8ef;--m:#6b7785}
+body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f9;color:#16202c;padding-bottom:70px}
+header{background:var(--n);color:#fff;padding:12px 14px}
+header h1{font-size:18px;margin:0 0 8px}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+input,select,textarea{width:100%;font-size:16px;padding:10px;border:1px solid var(--l);border-radius:8px;background:#fff;color:#16202c}
+header select,header input{border:0}
+main{padding:12px}
+.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.card h2{font-size:16px;margin:0 0 10px}
+.f{margin-bottom:8px}
+button{font-size:16px;border:0;border-radius:8px;padding:10px 14px;background:var(--n);color:#fff;cursor:pointer}
+button.ghost{background:#eef2f7;color:var(--n)}
+button.full{width:100%}
+.err{color:var(--r);font-size:14px;min-height:18px;margin:4px 0}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--l)}
+.list li:last-child{border-bottom:0}
+.muted{color:var(--m);font-size:14px}
+.del{background:none;color:var(--r);padding:6px 8px}
+.tot{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:15px}
+.tot b{font-size:17px}
+.cust{cursor:pointer}
+.cust .nm{font-weight:700}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--l);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{flex:1;background:none;color:var(--m);border-radius:0;padding:14px 4px}
+.tabs button.on{color:var(--n);font-weight:700;box-shadow:inset 0 3px 0 var(--n)}
+.hide{display:none}
+.bal{font-weight:700;color:var(--r)}
+.ok{color:var(--g)}
+</style>
+<meta name="aiaf-version" content="v1 · 29 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"></head>
+<body>
+<header>
+<h1>Sales Book</h1>
+<div class="row"><select id="branch" aria-label="Branch"></select><input id="day" type="date" aria-label="Date"></div>
+</header>
+<main>
+<section id="vSales">
+<div class="card"><h2>New sale</h2>
+<form id="saleForm" novalidate>
+<div class="f"><input id="desc" placeholder="Item / description"></div>
+<div class="f row"><input id="amt" type="number" inputmode="decimal" step="0.01" placeholder="Amount USD"><select id="method"><option>Cash</option><option>Zaad</option><option>eDahab</option><option>Debt</option></select></div>
+<div class="f hide" id="custWrap"><input id="cust" placeholder="Customer name"></div>
+<div class="err" id="saleErr"></div>
+<button class="full" id="addSale" type="submit">Add sale</button>
+</form></div>
+<div class="card"><h2>Sales</h2><ul class="list" id="salesList"></ul></div>
+<div class="card"><div class="tot" id="totals"></div></div>
+</section>
+<section id="vDebts" class="hide">
+<div id="debtList"></div>
+<div id="debtDetail" class="hide"></div>
+</section>
+<section id="vSet" class="hide">
+<div class="card"><h2>Branches</h2><p class="muted">One branch per line.</p>
+<div class="f"><textarea id="brText" rows="4"></textarea></div>
+<button id="saveBr">Save branches</button> <span id="brMsg" class="muted"></span></div>
+<div class="card"><h2>Data</h2><p class="muted">All data is saved on this device.</p><button class="ghost" id="clearAll">Delete all data</button></div>
+</section>
+</main>
+<nav class="tabs"><button id="tSales" class="on">Sales</button><button id="tDebts">Debts</button><button id="tSet">Settings</button></nav>
+<script>
+var KEY="salesbook_v1",D;
+function load(){try{D=JSON.parse(localStorage.getItem(KEY)||"null");}catch(e){D=null;}
+ if(!D||!D.branches){D={branches:["Main"],sales:[],pays:[]};}
+ if(!D.sales)D.sales=[];if(!D.pays)D.pays=[];}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){alert("Could not save: storage is full.");}}
+function $(i){return document.getElementById(i);}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function money(n){return "$"+(Math.round(n*100)/100).toFixed(2);}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function today(){var d=new Date();function z(n){return (n<10?"0":"")+n;}return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());}
+var cur=null;
+function br(){return $("branch").value;}
+function fillBranches(){var s=$("branch"),v=s.value,h="";for(var i=0;i<D.branches.length;i++){h+="<option>"+esc(D.branches[i])+"</option>";}s.innerHTML=h;if(v&&D.branches.indexOf(v)>=0)s.value=v;}
+function renderSales(){
+ var l=D.sales.filter(function(x){return x.branch===br()&&x.date===$("day").value;}),h="",t={Cash:0,Zaad:0,eDahab:0,Debt:0};
+ for(var i=0;i<l.length;i++){var s=l[i];t[s.method]=(t[s.method]||0)+s.amt;
+  h+="<li><span>"+esc(s.desc)+" <span class=\"muted\">("+esc(s.method)+(s.method==="Debt"?" \u2013 "+esc(s.cust):"")+")</span></span><span>"+money(s.amt)+" <button class=\"del\" aria-label=\"Delete\" data-id=\""+s.id+"\">\u2715</button></span></li>";}
+ $("salesList").innerHTML=h||"<li class=\"muted\">No sales yet.</li>";
+ var tot=t.Cash+t.Zaad+t.eDahab+t.Debt;
+ $("totals").innerHTML="<span>Cash</span><span>"+money(t.Cash)+"</span><span>Zaad</span><span>"+money(t.Zaad)+"</span><span>eDahab</span><span>"+money(t.eDahab)+"</span><span>Debt</span><span>"+money(t.Debt)+"</span><b>Total</b><b>"+money(tot)+"</b>";
+}
+function custData(){
+ var m={};
+ D.sales.forEach(function(s){if(s.branch===br()&&s.method==="Debt"){var c=m[s.cust]||(m[s.cust]={name:s.cust,debt:0,paid:0});c.debt+=s.amt;}});
+ D.pays.forEach(function(p){if(p.branch===br()&&m[p.cust]){m[p.cust].paid+=p.amt;}});
+ return Object.keys(m).sort().map(function(k){var c=m[k];c.bal=Math.round((c.debt-c.paid)*100)/100;return c;});
+}
+function renderDebts(){
+ if(cur){renderDetail();return;}
+ $("debtDetail").classList.add("hide");$("debtList").classList.remove("hide");
+ var cs=custData(),owe="",paid="";
+ cs.forEach(function(c){var r="<li class=\"cust\" data-c=\""+esc(c.name)+"\"><span><span class=\"nm\">"+esc(c.name)+"</span><br><span class=\"muted\">Total "+money(c.debt)+" \u00b7 Paid "+money(c.paid)+"</span></span><span class=\""+(c.bal>0?"bal":"ok")+"\">"+money(c.bal)+"</span></li>";if(c.bal>0)owe+=r;else paid+=r;});
+ $("debtList").innerHTML="<div class=\"card\"><h2>Owing</h2><ul class=\"list\">"+(owe||"<li class=\"muted\">No debts</li>")+"</ul></div>"+(paid?"<div class=\"card\"><h2>Paid</h2><ul class=\"list\">"+paid+"</ul></div>":"");
+}
+function renderDetail(){
+ var c=null,cs=custData();for(var i=0;i<cs.length;i++){if(cs[i].name===cur)c=cs[i];}
+ if(!c){cur=null;renderDebts();return;}
+ $("debtList").classList.add("hide");var el=$("debtDetail");el.classList.remove("hide");
+ var sh="",ph="";
+ D.sales.forEach(function(s){if(s.branch===br()&&s.method==="Debt"&&s.cust===cur)sh+="<li><span>"+esc(s.date)+" \u00b7 "+esc(s.desc)+"</span><span>"+money(s.amt)+"</span></li>";});
+ D.pays.forEach(function(p){if(p.branch===br()&&p.cust===cur)ph+="<li><span>"+esc(p.date)+" \u00b7 "+esc(p.method)+"</span><span class=\"ok\">"+money(p.amt)+"</span></li>";});
+ el.innerHTML="<div class=\"card\"><button class=\"ghost\" id=\"back\">\u2190 Back</button><h2 style=\"margin-top:10px\">"+esc(c.name)+"</h2>"
+  +"<div class=\"tot\"><span>Total debt</span><span>"+money(c.debt)+"</span><span>Paid</span><span>"+money(c.paid)+"</span><b>Balance</b><b id=\"balance\">"+money(c.bal)+"</b></div></div>"
+  +"<div class=\"card\"><h2>Debt sales</h2><ul class=\"list\">"+(sh||"<li class=\"muted\">None</li>")+"</ul></div>"
+  +"<div class=\"card\"><h2>Payments</h2><ul class=\"list\" id=\"payList\">"+(ph||"<li class=\"muted\">No payments yet</li>")+"</ul></div>"
+  +(c.bal>0?"<div class=\"card\"><h2>Record payment</h2><form id=\"payForm\" novalidate><div class=\"f row\"><input id=\"payAmt\" type=\"number\" inputmode=\"decimal\" step=\"0.01\" placeholder=\"Amount USD\"><select id=\"payMethod\"><option>Cash</option><option>Zaad</option><option>eDahab</option></select></div><div class=\"f\"><input id=\"payDate\" type=\"date\" value=\""+today()+"\"></div><div class=\"err\" id=\"payErr\"></div><button class=\"full\" id=\"savePay\" type=\"submit\">Save payment</button></form></div>":"");
+ $("back").onclick=function(){cur=null;renderDebts();};
+ var pf=$("payForm");if(pf)pf.onsubmit=function(e){e.preventDefault();
+  var a=parseFloat($("payAmt").value);
+  if(!$("payAmt").value||isNaN(a)){$("payErr").textContent="Enter an amount.";return;}
+  if(a<=0){$("payErr").textContent="Amount must be more than 0.";return;}
+  if(a>c.bal+0.0001){$("payErr").textContent="Amount is more than the balance ("+money(c.bal)+").";return;}
+  D.pays.push({id:uid(),branch:br(),cust:cur,amt:Math.round(a*100)/100,method:$("payMethod").value,date:$("payDate").value||today()});save();renderDetail();};
+}
+function show(v){["Sales","Debts","Set"].forEach(function(k){$("v"+k).classList.toggle("hide",k!==v);$("t"+k).classList.toggle("on",k===v);});
+ if(v==="Debts"){cur=null;renderDebts();} if(v==="Set"){$("brText").value=D.branches.join("\n");}}
+function init(){
+ load();fillBranches();$("day").value=today();renderSales();
+ $("branch").onchange=function(){cur=null;renderSales();renderDebts();};
+ $("day").onchange=renderSales;
+ $("method").onchange=function(){$("custWrap").classList.toggle("hide",$("method").value!=="Debt");};
+ $("saleForm").onsubmit=function(e){e.preventDefault();
+  var d=$("desc").value.trim(),a=parseFloat($("amt").value),m=$("method").value,c=$("cust").value.trim();
+  if(!d){$("saleErr").textContent="Enter a description.";return;}
+  if(!$("amt").value||isNaN(a)||a<=0){$("saleErr").textContent="Amount must be more than 0.";return;}
+  if(m==="Debt"&&!c){$("saleErr").textContent="Enter the customer name for a debt sale.";return;}
+  $("saleErr").textContent="";
+  D.sales.push({id:uid(),branch:br(),date:$("day").value||today(),desc:d,amt:Math.round(a*100)/100,method:m,cust:m==="Debt"?c:""});save();
+  $("desc").value="";$("amt").value="";$("cust").value="";renderSales();};
+ $("salesList").onclick=function(e){var id=e.target.getAttribute("data-id");if(!id)return;if(!confirm("Delete this sale?"))return;D.sales=D.sales.filter(function(s){return s.id!==id;});save();renderSales();};
+ $("debtList").onclick=function(e){var li=e.target.closest?e.target.closest("[data-c]"):null;if(!li)return;cur=li.getAttribute("data-c");renderDetail();};
+ $("tSales").onclick=function(){show("Sales");};$("tDebts").onclick=function(){show("Debts");};$("tSet").onclick=function(){show("Set");};
+ $("saveBr").onclick=function(){var l=$("brText").value.split("\n").map(function(x){return x.trim();}).filter(function(x){return x;});
+  if(!l.length){$("brMsg").textContent="Add at least one branch.";return;}D.branches=l;save();fillBranches();renderSales();$("brMsg").textContent="Saved.";};
+ $("clearAll").onclick=function(){if(!confirm("Delete ALL sales and payments on this device?"))return;D.sales=[];D.pays=[];save();renderSales();};
+}
+window.onload=init;
+</script>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v1 · 29 Sep 2026</div></body>
+</html>
