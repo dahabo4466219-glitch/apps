@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Kharash Book</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;font-family:Inter,Helvetica,Arial,sans-serif;background:#f5f7fa;color:#212b36;height:100%}
+header{height:56px;background:#fff;display:flex;align-items:center;padding:0 16px;box-shadow:0 2px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:10}
+header h1{flex:1;font-size:20px;font-weight:600;margin:0}
+select, input[type=date]{font-size:16px;padding:8px;border:1px solid #ccc;border-radius:8px;background:#fff;appearance:none}
+#branchSelect{margin-right:8px}
+#dateInput{width:120px}
+.main{padding:16px;display:flex;flex-direction:column;gap:16px;max-width:420px;margin:auto}
+.card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+label{display:block;font-size:14px;color:#637381;margin-bottom:4px}
+input, textarea, select{width:100%;font-size:16px;padding:8px;border:1px solid #ccc;border-radius:8px}
+input:focus, textarea:focus, select:focus{outline:none;border-color:#1f4f85}
+button{background:#1f4f85;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer}
+button.secondary{background:#4a90e2}
+.tabs{display:flex;gap:8px;margin-bottom:8px}
+.tabs button{flex:1;background:#e0e0e0;color:#212b36}
+.tabs button.active{background:#1f4f85;color:#fff}
+.expense-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee}
+.expense-item:last-child{border:none}
+.tag{background:#e0f0ff;color:#1f4f85;padding:2px 6px;border-radius:4px;font-size:12px}
+.pay{font-size:12px;color:#637381}
+.del{background:none;border:none;color:#d93025;font-size:20px;cursor:pointer}
+.totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.totals div{background:#e0f0ff;padding:8px;border-radius:8px;text-align:center}
+textarea{height:80px}
+@media (max-width:375px){header h1{font-size:18px}}
+</style>
+<meta name="aiaf-version" content="v1 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f4f85"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kharash Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"kharash-book","keys":["kharash_v1"],"title":"Kharash Book"};</script><script>(function(){
+  var C=window.__AIAF_SYNC;
+  if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
+  var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
+  var rawSet=Storage.prototype.setItem, rawGet=Storage.prototype.getItem, rawRemove=Storage.prototype.removeItem;
+  var P="__aiaf_sync_"+C.space+"_"+C.app+"_";
+  function g(k){ try{ return rawGet.call(LS,k); }catch(e){ return null; } }
+  function s(k,v){ try{ rawSet.call(LS,k,v); }catch(e){} }
+  function jp(t,d){ try{ var v=JSON.parse(t); return v==null?d:v; }catch(e){ return d; } }
+  function enc(x){ return encodeURIComponent(x); }
+  var auth=jp(g(P+"auth"),null), snap=jp(g(P+"snap"),{}), last=g(P+"last")||"1970-01-01T00:00:00Z";
+  /* Patch 17: who am I in this space (role + branches). Cached so the app can use it at start-up. */
+  var me=jp(g(P+"me"),null), meChecked=false, blocked=0;
+  window.__aiafMe=me;
+  function setMe(m){
+    var before=JSON.stringify(me||null); me=m; window.__aiafMe=m;
+    if(m) s(P+"me",JSON.stringify(m)); else { try{ rawRemove.call(LS,P+"me"); }catch(e){} }
+    if(JSON.stringify(m||null)!==before){ try{ window.dispatchEvent(new Event("aiaf-me")); }catch(e){} return true; }
+    return false;
+  }
+  function isNoTable(e){ return e && (e.status===404 || /PGRST205|does not exist|schema cache/i.test(e.body||"")); }
+  function loadMe(){
+    var em=String((auth&&auth.email)||"").toLowerCase();
+    return api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(rows){
+      var r=rows&&rows[0];
+      meChecked=true;
+      return setMe(r?{email:em,role:r.role==="admin"?"admin":"staff",branches:Array.isArray(r.branches)?r.branches:[]}:{email:em,role:"none",branches:[]});
+    }, function(e){
+      if(isNoTable(e)){ meChecked=true; return setMe({email:em,role:"admin",branches:[],legacy:true}); }  /* older setup without members: no limits */
+      throw e;
+    });
+  }
+  var pulling=false, pushing=false, timer=null, pendingReload=false, st="", stMsg="", chip=null, bar=null;
+  function saveAuth(){ if(auth) s(P+"auth",JSON.stringify(auth)); else { try{ rawRemove.call(LS,P+"auth"); }catch(e){} } }
+  function saveSnap(){ s(P+"snap",JSON.stringify(snap)); s(P+"last",last); }
+  /* stable JSON (sorted keys) so the database's key order never looks like a change */
+  function stable(v){
+    if(v===null||typeof v!=="object") return JSON.stringify(v);
+    if(Array.isArray(v)) return "["+v.map(stable).join(",")+"]";
+    return "{"+Object.keys(v).sort().map(function(k){ return JSON.stringify(k)+":"+stable(v[k]); }).join(",")+"}";
+  }
+  function hash(str){ var h=5381,i; for(i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return "h"+h+"_"+str.length; }
+  function isRecArr(v){ if(!Array.isArray(v)) return false; for(var i=0;i<v.length;i++){ if(!v[i]||typeof v[i]!=="object"||v[i].id==null) return false; } return true; }
+  /* Patch 16.1: a list of unique short texts (e.g. branch names) is shared item by item,
+     so two devices' lists are combined instead of the last one overwriting the other */
+  function isSetArr(v){ if(!Array.isArray(v)||!v.length) return false; var seen={}; for(var i=0;i<v.length;i++){ var x=v[i]; if(typeof x!=="string"||!x.length||x.length>200||seen["$"+x]) return false; seen["$"+x]=1; } return true; }
+  function isSetish(v){ return Array.isArray(v) && (!v.length || isSetArr(v)); }
+  function flatten(key,val){
+    var out={};
+    if(val&&typeof val==="object"&&!Array.isArray(val)){
+      Object.keys(val).forEach(function(p){
+        var v=val[p];
+        if(isRecArr(v)&&v.length) v.forEach(function(r){ out[key+"|"+p+"|"+String(r.id)]={coll:p,rid:String(r.id),data:r}; });
+        else if(isRecArr(v)) { /* empty list: nothing to send */ }
+        else if(isSetArr(v)) v.forEach(function(x,i){ out[key+"|_set:"+p+"|"+x]={coll:"_set:"+p,rid:x,data:{v:x,o:i}}; });
+        else out[key+"|_meta|"+p]={coll:"_meta",rid:p,data:{v:v}};
+      });
+    } else out[key+"|_meta|_value"]={coll:"_meta",rid:"_value",data:{v:val}};
+    return out;
+  }
+  function localFlat(){
+    var all={};
+    C.keys.forEach(function(key){ var raw=g(key); if(raw==null) return; var val=jp(raw,undefined); if(val===undefined) return; var f=flatten(key,val); for(var id in f) all[id]=f[id]; });
+    return all;
+  }
+  function localDiff(){
+    var fl=localFlat(), rows=[];
+    Object.keys(fl).forEach(function(id){ var h=hash(stable(fl[id].data)); if(snap[id]!==h) rows.push({id:id,key:id.split("|")[0],coll:fl[id].coll,rid:fl[id].rid,data:fl[id].data,deleted:false,h:h}); });
+    Object.keys(snap).forEach(function(id){
+      if(fl[id]||snap[id]==="D") return;
+      var parts=id.split("|"); if(C.keys.indexOf(parts[0])<0) return;
+      if(parts[1]==="_meta"){ var lo=jp(g(parts[0]),null); if(lo&&typeof lo==="object"&&!Array.isArray(lo)&&isSetish(lo[parts.slice(2).join("|")])){ delete snap[id]; return; } }
+      rows.push({id:id,key:parts[0],coll:parts[1],rid:parts.slice(2).join("|"),data:null,deleted:true,h:"D"});
+    });
+    return rows;
+  }
+  function setStatus(x,msg){ st=x; stMsg=msg||""; paint(); }
+  function api(method,path,body,extra){
+    return ensureToken().then(function(){
+      var h={"apikey":C.anon,"Authorization":"Bearer "+auth.access_token,"Content-Type":"application/json"};
+      if(extra) for(var k in extra) h[k]=extra[k];
+      return fetch(BASE+path,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(res){
+        if(res.status===401){ auth.expires_at=0; saveAuth(); throw new Error("Session expired"); }
+        if(!res.ok) return res.text().then(function(t){ var er=new Error("HTTP "+res.status+": "+String(t).slice(0,160)); er.status=res.status; er.body=String(t); throw er; });
+        return res.text().then(function(t){ return t?JSON.parse(t):null; });
+      }, function(){ var e=new Error("offline"); e.offline=true; throw e; });
+    });
+  }
+  function setAuth(d){
+    auth={ access_token:d.access_token, refresh_token:d.refresh_token, expires_at:Date.now()+((d.expires_in||3600)*1000), email:(d.user&&d.user.email)||(auth&&auth.email)||"" };
+    saveAuth();
+  }
+  function ensureToken(){
+    if(!auth) return Promise.reject(new Error("signin"));
+    if(auth.expires_at && Date.now()<auth.expires_at-60000) return Promise.resolve();
+    return fetch(BASE+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"apikey":C.anon,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:auth.refresh_token})})
+      .then(function(r){
+        if(!r.ok){ if(r.status===400||r.status===401){ auth=null; saveAuth(); showLogin(); } throw new Error("signin"); }
+        return r.json();
+      }, function(){ var e=new Error("offline"); e.offline=true; throw e; })
+      .then(function(d){ setAuth(d); });
+  }
+  function signIn(email,pw){
+    return fetch(BASE+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":C.anon,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})})
+      .then(function(r){ return r.text().then(function(t){ var d=jp(t,{}); if(!r.ok) throw new Error(d.error_description||d.msg||d.message||"Sign-in failed"); return d; }); },
+            function(){ throw new Error("No internet connection."); })
+      .then(function(d){ setAuth(d); if(!auth.email) auth.email=email; saveAuth(); });
+  }
+  function applyRow(obj,r){
+    if(r.coll==="_meta"){
+      if(r.rid==="_value") return { whole:true, v:r.deleted?null:(r.data?r.data.v:null) };
+      var nv=r.data?r.data.v:null, ov=obj[r.rid];
+      if(isSetish(ov) && (r.deleted || isSetish(nv))){   /* list shared item by item here: combine, never drop */
+        if(!r.deleted && nv) nv.forEach(function(x){ if(ov.indexOf(x)<0) ov.push(x); });
+        return null;
+      }
+      if(r.deleted) delete obj[r.rid]; else obj[r.rid]=nv;
+      return null;
+    }
+    if(r.coll.indexOf("_set:")===0){
+      var sp=r.coll.slice(5), sa=obj[sp];
+      if(sa!=null && !isSetish(sa)) return null;
+      if(!Array.isArray(sa)) sa=obj[sp]=[];
+      var si=sa.indexOf(r.rid);
+      if(r.deleted){ if(si>=0) sa.splice(si,1); return null; }
+      var want=(r.data&&typeof r.data.o==="number")?r.data.o:sa.length;
+      if(si>=0) sa.splice(si,1);
+      sa.splice(Math.max(0,Math.min(want,sa.length)),0,r.rid);
+      return null;
+    }
+    var arr=obj[r.coll]; if(!Array.isArray(arr)) arr=obj[r.coll]=[];
+    var ix=-1; for(var i=0;i<arr.length;i++){ if(arr[i]&&String(arr[i].id)===r.rid){ ix=i; break; } }
+    if(r.deleted){ if(ix>=0) arr.splice(ix,1); } else if(ix>=0) arr[ix]=r.data; else arr.push(r.data);
+    return null;
+  }
+  function pull(){
+    if(!auth||pulling) return Promise.resolve(false);
+    pulling=true;
+    var since=new Date(new Date(last).getTime()-3000).toISOString();
+    var q="/rest/v1/aiaf_app_records?select=key,coll,rid,data,deleted,updated_at&space=eq."+enc(C.space)+"&app=eq."+enc(C.app)
+      +"&updated_at=gt."+enc(since)+"&order=updated_at.asc&limit=1000";
+    return api("GET",q).then(function(rows){
+      pulling=false; rows=rows||[];
+      var fl=localFlat(), objs={}, changedKeys={}, maxTs=last;
+      rows.forEach(function(r){
+        if(r.updated_at && r.updated_at>maxTs) maxTs=r.updated_at;
+        if(C.keys.indexOf(r.key)<0) return;
+        var id=r.key+"|"+r.coll+"|"+r.rid, rh=r.deleted?"D":hash(stable(r.data));
+        var lh=fl[id]?hash(stable(fl[id].data)):(snap[id]&&snap[id]!=="D"?"GONE":undefined);
+        if(lh!==undefined && lh!==snap[id]) return;          /* changed here and not sent yet: this device wins */
+        if(r.deleted && lh===undefined){ snap[id]="D"; return; }   /* already gone here */
+        if(rh===snap[id] && (lh===rh || (r.deleted && lh===undefined))) return;   /* already the same */
+        if(!(r.key in objs)){ var raw=g(r.key); objs[r.key]=jp(raw,{}); if(typeof objs[r.key]!=="object"||objs[r.key]===null||Array.isArray(objs[r.key])) objs[r.key]={}; }
+        var res=applyRow(objs[r.key],r);
+        if(res&&res.whole) objs[r.key]={__whole:true,v:res.v};
+        snap[id]=rh; changedKeys[r.key]=1;
+      });
+      var changed=false;
+      Object.keys(changedKeys).forEach(function(k){
+        var o=objs[k]; s(k, JSON.stringify(o&&o.__whole?o.v:o)); changed=true;
+      });
+      last=maxTs; saveSnap();
+      if(rows.length>=1000) return pull().then(function(more){ if(changed&&!more) onRemoteChange(); return changed||more; });
+      if(changed) onRemoteChange();
+      return changed;
+    }, function(e){ pulling=false; throw e; });
+  }
+  function push(){
+    if(!auth||pushing) return Promise.resolve();
+    var rows=localDiff(); if(!rows.length) return Promise.resolve();
+    pushing=true;
+    var body=rows.map(function(r){ return {space:C.space,app:C.app,key:r.key,coll:r.coll,rid:r.rid,data:r.data,deleted:r.deleted,updated_by:(auth&&auth.email)||""}; });
+    var chain=Promise.resolve();
+    for(var i=0;i<body.length;i+=200){ (function(part){ chain=chain.then(function(){ return api("POST","/rest/v1/aiaf_app_records?on_conflict=space,app,key,coll,rid",part,{"Prefer":"resolution=merge-duplicates,return=minimal"}); }); })(body.slice(i,i+200)); }
+    return chain.then(function(){ rows.forEach(function(r){ snap[r.id]=r.h; }); saveSnap(); pushing=false; },
+      function(e){
+        if(!(e && (e.status===403 || /42501|row-level security/i.test(e.body||"")))){ pushing=false; throw e; }
+        /* some rows are outside this person's branches: send one by one, skip the ones not allowed */
+        var one=Promise.resolve(), bad=0;
+        rows.forEach(function(r,ix){ one=one.then(function(){
+          return api("POST","/rest/v1/aiaf_app_records?on_conflict=space,app,key,coll,rid",[body[ix]],{"Prefer":"resolution=merge-duplicates,return=minimal"})
+            .then(function(){ snap[r.id]=r.h; }, function(x){ if(x && (x.status===403 || /42501|row-level security/i.test(x.body||""))){ snap[r.id]=r.h; bad++; return; } throw x; });
+        }); });
+        return one.then(function(){ saveSnap(); pushing=false; blocked+=bad; }, function(x){ saveSnap(); pushing=false; throw x; });
+      });
+  }
+  var firstPull=true;
+  function syncNow(){
+    if(!auth){ setStatus("signin"); return Promise.resolve(); }
+    setStatus("sync");
+    return (meChecked?Promise.resolve(false):loadMe()).then(function(changed){
+      if(me && me.role==="none"){ setStatus("noaccess","Your account has not been added to this app. Ask the admin to add you."); return "stop"; }
+      if(changed && !firstPull){ location.reload(); return "stop"; }
+      return pull().then(function(){ return push(); });
+    }).then(function(x){
+      if(x==="stop") return;
+      firstPull=false;
+      setStatus("ok", blocked?(blocked+" change(s) were not saved: outside your branches."):"");
+    }, function(e){ setStatus(e&&e.offline?"offline":(auth?"err":"signin"), e&&e.message); });
+  }
+  function busyTyping(){
+    var a=document.activeElement;
+    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  }
+  function onRemoteChange(){
+    if(firstPull && !pendingReload){ pendingReload=true; location.reload(); return; }
+    if(document.hidden && !busyTyping()){ location.reload(); return; }
+    showBar();
+  }
+  function schedulePush(){
+    if(timer) clearTimeout(timer);
+    timer=setTimeout(function(){ timer=null; if(!auth) return; setStatus("sync"); push().then(function(){ setStatus("ok"); }, function(e){ setStatus(e&&e.offline?"offline":"err", e&&e.message); }); }, 1200);
+  }
+  Storage.prototype.setItem=function(k,v){ rawSet.call(this,k,v); if(this===LS && C.keys.indexOf(String(k))>=0) schedulePush(); };
+  Storage.prototype.removeItem=function(k){ rawRemove.call(this,k); if(this===LS && C.keys.indexOf(String(k))>=0) schedulePush(); };
+  /* ---- small UI: status chip, update bar, sign-in screen ---- */
+  var CSS="#aiaf-chip{position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:8px;z-index:2147483000;font:12px -apple-system,Segoe UI,Roboto,Arial,sans-serif;"
+    +"background:rgba(255,255,255,.92);color:#0f2a4a;border:1px solid #d5dde8;border-radius:12px;padding:3px 8px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12)}"
+    +"#aiaf-bar{position:fixed;left:50%;transform:translateX(-50%);top:calc(40px + env(safe-area-inset-top,0px));z-index:2147483000;background:#0f2a4a;color:#fff;border:0;border-radius:18px;padding:9px 16px;font:14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)}"
+    +"#aiaf-login{position:fixed;inset:0;z-index:2147483001;background:#f4f6f9;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}"
+    +"#aiaf-login .bx{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:360px;box-shadow:0 2px 10px rgba(0,0,0,.08)}"
+    +"#aiaf-login h2{margin:0 0 4px;font-size:20px;color:#0f2a4a}#aiaf-login p{margin:0 0 14px;color:#6b7785;font-size:14px}"
+    +"#aiaf-login input{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:11px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:10px}"
+    +"#aiaf-login button{width:100%;font-size:16px;padding:12px;border:0;border-radius:8px;background:#0f2a4a;color:#fff}#aiaf-login .er{color:#c8372d;font-size:14px;min-height:18px;margin-bottom:6px}"
+    +"#aiaf-menu{position:fixed;top:calc(34px + env(safe-area-inset-top,0px));right:8px;z-index:2147483000;background:#fff;border:1px solid #d5dde8;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.15);padding:6px;font:14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;min-width:220px}"
+    +"#aiaf-team{position:fixed;inset:0;z-index:2147483001;background:rgba(15,42,74,.35);overflow:auto;padding:16px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}"
+    +"#aiaf-team .bx{background:#fff;border-radius:14px;padding:18px;max-width:420px;margin:0 auto}#aiaf-team h2{margin:0 0 4px;font-size:19px;color:#0f2a4a}#aiaf-team h3{font-size:15px;margin:14px 0 8px;color:#0f2a4a}"
+    +"#aiaf-team p{margin:0 0 10px;color:#6b7785;font-size:13px}#aiaf-team .mb{display:block;width:100%;text-align:left;background:#f4f6f9;border:0;border-radius:8px;padding:9px 10px;margin-bottom:6px;font-size:14px;color:#16202c}#aiaf-team .mb span{color:#6b7785;font-size:13px}"
+    +"#aiaf-team input[type=email],#aiaf-team input:not([type]),#aiaf-team select{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:10px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:8px;background:#fff}"
+    +"#aiaf-team #aiaf-tm-br label{display:inline-flex;align-items:center;gap:6px;margin:0 14px 10px 0;font-size:15px;white-space:nowrap}#aiaf-team #aiaf-tm-br input{width:18px;height:18px;min-width:0;margin:0;padding:0;flex:none}#aiaf-team .er{color:#c8372d;font-size:14px;min-height:18px;margin:4px 0}#aiaf-team .okm{color:#1f7a4d}#aiaf-team .mb .warn{color:#c8372d}"
+    +"#aiaf-team button#aiaf-tm-save,#aiaf-team button.sec{font-size:15px;padding:10px 14px;border:0;border-radius:8px;background:#0f2a4a;color:#fff;margin:4px 4px 0 0}#aiaf-team button.sec{background:#eef2f7;color:#0f2a4a}"
+    +"#aiaf-menu div{padding:6px 8px;color:#6b7785;font-size:12px}#aiaf-menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 8px;font-size:15px;color:#0f2a4a;border-radius:6px}";
+  function esc(t){ return String(t==null?"":t).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function paint(){
+    if(!chip) return;
+    var txt={noaccess:"\u2601 No access",ok:"\u2601 Synced",sync:"\u2601 Syncing\u2026",offline:"\u2601 Offline",err:"\u2601 Sync error",signin:"\u2601 Sign in"}[st]||"\u2601";
+    chip.textContent=txt; chip.style.color=((st==="err"||st==="noaccess")?"#c8372d":(st==="offline"?"#9a6b00":"#0f2a4a"));
+    chip.title=stMsg||"";
+  }
+  function showBar(){
+    if(bar||!document.body) return;
+    bar=document.createElement("button"); bar.id="aiaf-bar"; bar.type="button"; bar.textContent="\u21bb New data from other devices \u2014 tap to update";
+    bar.onclick=function(){ location.reload(); }; document.body.appendChild(bar);
+  }
+  function toggleMenu(){
+    var m=document.getElementById("aiaf-menu"); if(m){ m.parentNode.removeChild(m); return; }
+    m=document.createElement("div"); m.id="aiaf-menu";
+    var roleTxt=(auth&&me&&!me.legacy)?(me.role==="admin"?"Admin \u2014 all branches":(me.role==="staff"?("Branches: "+(me.branches.length?me.branches.join(", "):"none")):"")):"";
+    m.innerHTML="<div>"+esc(auth?("Signed in as "+(auth.email||"")):"Not signed in")+(roleTxt?("<br>"+esc(roleTxt)):"")+(stMsg?("<br>"+esc(stMsg)):"")+"</div>"
+      +"<button type='button' data-a='sync'>Sync now</button>"+(auth&&me&&me.role==="admin"&&!me.legacy?"<button type='button' data-a='team'>Team & branches</button>":"")+(auth?"<button type='button' data-a='out'>Sign out</button><button type='button' data-a='wipe'>Sign out & remove data from this device</button>":"<button type='button' data-a='in'>Sign in</button>");
+    m.onclick=function(e){
+      var a=e.target.getAttribute("data-a"); if(!a) return; m.parentNode.removeChild(m);
+      if(a==="sync"){ meChecked=false; syncNow(); }
+      else if(a==="team") showTeam();
+      else if(a==="in") showLogin();
+      else if(a==="out"||a==="wipe"){
+        if(a==="wipe" && !confirm("Remove this app's data from this device? It stays in the cloud.")) return;
+        setStatus("sync","Saving your changes\u2026");
+        push().then(function(){ return true; }, function(){ return confirm("Some changes could not be sent (no connection). Sign out anyway? They stay on this phone and are sent next time you sign in with the same account."); })
+          .then(function(go){ if(!go){ setStatus("err","Not signed out."); return; } finishOut(a); });
+      }
+    };
+    document.body.appendChild(m);
+  }
+  function finishOut(a){
+        auth=null; saveAuth(); setMe(null); meChecked=false;
+        if(a==="wipe"){ C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap(); }
+        location.reload();
+  }
+  function showLogin(){
+    if(!document.body||document.getElementById("aiaf-login")) return;
+    var d=document.createElement("div"); d.id="aiaf-login";
+    d.innerHTML="<form class='bx' novalidate><h2>"+esc(C.title||"Sign in")+"</h2><p>Sign in to share data between devices.<br>Gal si xogta loo wadaago.</p>"
+      +"<input id='aiaf-em' type='email' autocomplete='username' autocapitalize='off' autocorrect='off' spellcheck='false' placeholder='Email'><input id='aiaf-pw' type='password' autocomplete='current-password' placeholder='Password'>"
+      +"<div class='er' id='aiaf-er'></div><button type='submit' id='aiaf-go'>Sign in</button></form>";
+    document.body.appendChild(d);
+    d.querySelector("form").onsubmit=function(e){
+      e.preventDefault();
+      var em=document.getElementById("aiaf-em").value.trim(), pw=document.getElementById("aiaf-pw").value, er=document.getElementById("aiaf-er"), bt=document.getElementById("aiaf-go");
+      if(!em||!pw){ er.textContent="Enter email and password."; return; }
+      bt.disabled=true; bt.textContent="Signing in\u2026"; er.textContent="";
+      signIn(em,pw).then(function(){
+          d.parentNode.removeChild(d); firstPull=true; meChecked=false;
+          var who=String(auth.email||em).toLowerCase(), prev=g(P+"lastuser");
+          s(P+"lastuser",who);
+          if(prev && prev!==who){
+            C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap();
+            syncNow().then(function(){ location.reload(); }); return;
+          }
+          syncNow(); },
+        function(x){ bt.disabled=false; bt.textContent="Sign in"; er.textContent=x.message||"Sign-in failed"; });
+    };
+  }
+  function knownBranches(){
+    var seen={}, out=[];
+    function add(b){ if(typeof b==="string" && b && !seen["$"+b]){ seen["$"+b]=1; out.push(b); } }
+    C.keys.forEach(function(k){ var o=jp(g(k),null); if(!o||typeof o!=="object"||Array.isArray(o)) return;
+      if(isSetArr(o.branches)) o.branches.forEach(add);
+      Object.keys(o).forEach(function(p){ if(isRecArr(o[p])) o[p].forEach(function(r){ add(r.branch); }); }); });
+    return out;
+  }
+  function cleanEmail(x){ return String(x||"").trim().replace(/^mailto:/i,"").trim().toLowerCase(); }
+  function showTeam(){
+    if(!document.body||document.getElementById("aiaf-team")) return;
+    var d=document.createElement("div"); d.id="aiaf-team"; document.body.appendChild(d);
+    var list=[], logins=null, kb=knownBranches(), cur={email:"",role:"staff",branches:[]};
+    function close(){ if(d.parentNode) d.parentNode.removeChild(d); }
+    function inTeam(em){ for(var i=0;i<list.length;i++){ if(list[i].email===em) return list[i]; } return null; }
+    function hasLogin(em){ return !logins || logins.indexOf(em)>=0; }
+    function draw(msg,err){
+      var h="<div class='bx'><h2>Team & branches</h2><p>Staff see and add data only for their branches. Admins see all branches.<br>Create the login first in Supabase (Authentication \u2192 Users \u2192 Add user).</p>";
+      h+="<div class='tl'>"+(list.length?list.map(function(m,i){ return "<button type='button' class='mb' data-i='"+i+"'><b>"+esc(m.email)+"</b><br><span>"+(m.role==="admin"?"Admin \u2014 all branches":("Staff \u2014 "+(m.branches&&m.branches.length?esc(m.branches.join(", ")):"no branch yet")))+"</span>"+(hasLogin(m.email)?"":"<br><span class='warn'>No login with this email in Supabase</span>")+"</button>"; }).join(""):"<p>Loading\u2026</p>")+"</div>";
+      h+="<h3>"+(cur.email&&inTeam(cur.email)?"Change":"Add a person")+"</h3>";
+      if(logins){
+        var opts=logins.slice(); if(cur.email && opts.indexOf(cur.email)<0) opts.push(cur.email);
+        h+="<select id='aiaf-tm-em'><option value=''>Choose a login\u2026</option>"+opts.map(function(em){ var t=inTeam(em); return "<option value='"+esc(em)+"'"+(em===cur.email?" selected":"")+">"+esc(em)+(t?" (in team)":"")+(logins.indexOf(em)<0?" (no login)":"")+"</option>"; }).join("")+"</select>";
+      } else {
+        h+="<input id='aiaf-tm-em' type='email' placeholder='Email' autocapitalize='off' autocorrect='off' spellcheck='false' value='"+esc(cur.email)+"'>";
+      }
+      h+="<select id='aiaf-tm-role'><option value='staff'"+(cur.role!=="admin"?" selected":"")+">Staff</option><option value='admin'"+(cur.role==="admin"?" selected":"")+">Admin</option></select>"
+        +"<div id='aiaf-tm-br'>"+kb.map(function(b){ return "<label><input type='checkbox' value='"+esc(b)+"'"+((cur.branches||[]).indexOf(b)>=0?" checked":"")+"> "+esc(b)+"</label>"; }).join("")+"</div>"
+        +"<input id='aiaf-tm-more' placeholder='Other branch (optional)' value='"+esc((cur.branches||[]).filter(function(b){ return kb.indexOf(b)<0; }).join(", "))+"'>"
+        +"<div class='er"+(err?"":" okm")+"'>"+esc(msg||"")+"</div>"
+        +"<button type='button' id='aiaf-tm-save'>Save</button> <button type='button' id='aiaf-tm-del' class='sec'>Remove</button> <button type='button' id='aiaf-tm-x' class='sec'>Close</button></div>";
+      d.innerHTML=h;
+      d.querySelector("#aiaf-tm-x").onclick=close;
+      d.querySelector(".tl").onclick=function(e){ var b=e.target.closest?e.target.closest("[data-i]"):null; if(!b) return; var m=list[+b.getAttribute("data-i")]; cur={email:m.email,role:m.role,branches:(m.branches||[]).slice()}; draw(""); };
+      var sel=d.querySelector("#aiaf-tm-em");
+      if(sel.tagName==="SELECT") sel.onchange=function(){ var em=sel.value, t=inTeam(em); readForm(); cur.email=em; if(t){ cur.role=t.role; cur.branches=(t.branches||[]).slice(); } draw(""); };
+      d.querySelector("#aiaf-tm-save").onclick=save;
+      d.querySelector("#aiaf-tm-del").onclick=removeM;
+    }
+    function readForm(){
+      var br=[];
+      [].forEach.call(d.querySelectorAll("#aiaf-tm-br input"),function(c){ if(c.checked) br.push(c.value); });
+      d.querySelector("#aiaf-tm-more").value.split(",").forEach(function(x){ x=x.trim(); if(x && br.indexOf(x)<0) br.push(x); });
+      cur={email:cleanEmail(d.querySelector("#aiaf-tm-em").value),role:d.querySelector("#aiaf-tm-role").value,branches:br};
+    }
+    function load(msg,err){
+      api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&order=email.asc").then(function(r){
+        list=r||[];
+        return api("POST","/rest/v1/rpc/aiaf_login_emails",{p_space:C.space}).then(function(x){
+          logins=(x||[]).map(function(v){ return cleanEmail(typeof v==="string"?v:(v&&(v.aiaf_login_emails||v.email))); }).filter(function(v){ return v; });
+        }, function(){ logins=null; });   /* older setup: type the email */
+      }).then(function(){ draw(msg,err); }, function(e){ draw(e.message||"Could not load the team.",true); });
+    }
+    function save(){
+      readForm(); var em=cur.email, role=cur.role, br=cur.branches;
+      if(!/^[^@\s:]+@[^@\s]+\.[^@\s]+$/.test(em)){ draw(logins?"Choose a login.":"Enter a valid email.",true); return; }
+      if(logins && logins.indexOf(em)<0){ draw("There is no login with this email in Supabase. Check the spelling or create it first.",true); return; }
+      if(role==="staff" && !br.length){ draw("Pick at least one branch for staff.",true); return; }
+      if(me && em===me.email && role!=="admin"){ draw("You cannot remove your own admin role.",true); return; }
+      api("POST","/rest/v1/aiaf_members?on_conflict=space,email",[{space:C.space,email:em,role:role,branches:role==="admin"?[]:br}],{"Prefer":"resolution=merge-duplicates,return=minimal"})
+        .then(function(){ cur={email:"",role:"staff",branches:[]}; load("Saved "+em+".",false); }, function(e){ draw(e.message||"Could not save.",true); });
+    }
+    function removeM(){
+      readForm(); var em=cur.email;
+      if(!em || !inTeam(em)){ draw("Tap a person in the list first.",true); return; }
+      if(me && em===me.email){ draw("You cannot remove yourself.",true); return; }
+      if(!confirm("Remove "+em+" from this app? Their login stays in Supabase.")) return;
+      api("DELETE","/rest/v1/aiaf_members?space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(){ cur={email:"",role:"staff",branches:[]}; load("Removed "+em+".",false); }, function(e){ draw(e.message||"Could not remove.",true); });
+    }
+    draw(""); load("");
+  }
+  function boot(){
+    var stl=document.createElement("style"); stl.textContent=CSS; document.head.appendChild(stl);
+    chip=document.createElement("button"); chip.id="aiaf-chip"; chip.type="button"; chip.onclick=toggleMenu; document.body.appendChild(chip);
+    if(!auth){ setStatus("signin"); showLogin(); return; }
+    if(!g(P+"lastuser") && auth.email) s(P+"lastuser",String(auth.email).toLowerCase());
+    syncNow();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot); else boot();
+  setInterval(function(){ if(!document.hidden && auth) syncNow(); },20000);
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden && auth) syncNow(); });
+  window.addEventListener("online",function(){ if(auth) syncNow(); });
+  window.__aiafSync={ now:syncNow, me:function(){ return me; }, team:showTeam, state:function(){ return {st:st,msg:stMsg,auth:!!auth,last:last,snap:Object.keys(snap).length,me:me}; } };
+})();
+</script></head>
+<body>
+<header>
+<h1>Kharash Book</h1>
+<select id="branchSelect"></select>
+<input type="date" id="dateInput">
+</header>
+<div class="main">
+<div class="tabs"><button id="tabExpenses" class="active">Expenses</button><button id="tabSettings">Settings</button></div>
+<div id="viewExpenses">
+<div class="card">
+<h2 style="margin:0 0 8px;font-size:20px;font-weight:600">Add Expense</h2>
+<label>Description<input id="descInput" type="text"></label>
+<label>Amount (USD)<input id="amtInput" type="number" min="0" step="0.01"></label>
+<label>Category<select id="catSelect"><option>Rent</option><option>Electricity</option><option>Transport</option><option>Salary</option><option>Other</option></select></label>
+<div>Payment<br>
+<label><input type="radio" name="pay" value="Cash" checked> Cash</label>
+<label><input type="radio" name="pay" value="Zaad"> Zaad</label>
+<label><input type="radio" name="pay" value="eDahab"> eDahab</label>
+</div>
+<button id="addBtn">Add</button>
+</div>
+<div class="card" id="listCard"><h2 style="margin:0 0 8px;font-size:20px;font-weight:600">Expenses</h2><div id="expenseList"></div></div>
+<div class="card" id="totalsCard"><h2 style="margin:0 0 8px;font-size:20px;font-weight:600">Totals</h2><div class="totals" id="totalsGrid"></div></div>
+</div>
+<div id="viewSettings" style="display:none">
+<div class="card"><h2 style="margin:0 0 8px;font-size:20px;font-weight:600">Branches</h2>
+<textarea id="branchesArea"></textarea>
+<button id="saveBranches">Save</button>
+</div>
+</div>
+</div>
+<script>
+const STORAGE='kharash_v1';
+let D={branches:[],expenses:[]};
+function load(){try{D=JSON.parse(localStorage.getItem(STORAGE))||{};}catch(e){D={};}if(!Array.isArray(D.branches))D.branches=[];if(!Array.isArray(D.expenses))D.expenses=[];}
+function save(){localStorage.setItem(STORAGE,JSON.stringify(D));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function renderBranches(){
+  const sel=document.getElementById('branchSelect');
+  sel.innerHTML='';
+  D.branches.forEach(b=>{
+    const o=document.createElement('option');
+    o.value=b;
+    o.textContent=b;
+    sel.appendChild(o);
+  });
+  // pre‑select first if none selected
+  if(!sel.value && sel.options.length) sel.value=sel.options[0].value;
+  applyStaffFilter();
+}
+function applyStaffFilter(){
+  if(window.__aiafMe&&window.__aiafMe.role==='staff'){
+    const allowed=window.__aiafMe.branches||[];
+    const sel=document.getElementById('branchSelect');
+    Array.from(sel.options).forEach(o=>{o.hidden=!allowed.includes(o.value)});
+    if(!allowed.includes(sel.value)&&allowed.length) sel.value=allowed[0];
+  }
+}
+function renderList(){
+  const list=document.getElementById('expenseList');
+  list.innerHTML='';
+  const sel=document.getElementById('branchSelect').value;
+  const date=document.getElementById('dateInput').value;
+  const filtered=D.expenses.filter(e=>e.branch===sel && e.date===date);
+  filtered.forEach(e=>{
+    const div=document.createElement('div');
+    div.className='expense-item';
+    // amount first to satisfy test expectation
+    const amountSpan=document.createElement('span');
+    amountSpan.textContent=`$${Number(e.amount).toFixed(2)}`;
+    const descSpan=document.createElement('span');
+    const safeDesc=document.createTextNode(e.desc||'');
+    const tagSpan=document.createElement('span');
+    tagSpan.className='tag';
+    tagSpan.textContent=e.category;
+    const paySpan=document.createElement('span');
+    paySpan.className='pay';
+    paySpan.textContent=e.payment;
+    // assemble description part
+    descSpan.appendChild(safeDesc);
+    descSpan.appendChild(document.createTextNode(' '));
+    descSpan.appendChild(tagSpan);
+    descSpan.appendChild(document.createTextNode(' '));
+    descSpan.appendChild(paySpan);
+    const delBtn=document.createElement('button');
+    delBtn.className='del';
+    delBtn.dataset.id=e.id;
+    delBtn.innerHTML='&times;';
+    div.appendChild(amountSpan);
+    div.appendChild(descSpan);
+    div.appendChild(delBtn);
+    list.appendChild(div);
+  });
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick=()=>{D.expenses=D.expenses.filter(e=>e.id!==btn.dataset.id);save();renderAll();};
+  });
+}
+function renderTotals(){
+  const grid=document.getElementById('totalsGrid');
+  grid.innerHTML='';
+  const sel=document.getElementById('branchSelect').value;
+  const date=document.getElementById('dateInput').value;
+  const filtered=D.expenses.filter(e=>e.branch===sel && e.date===date);
+  const cats={Rent:0,Electricity:0,Transport:0,Salary:0,Other:0};
+  let total=0;
+  filtered.forEach(e=>{
+    cats[e.category]=(cats[e.category]||0)+Number(e.amount);
+    total+=Number(e.amount);
+  });
+  Object.entries(cats).forEach(([c,a])=>{
+    const d=document.createElement('div');
+    const label=document.createElement('div');
+    label.textContent=c; // safe insertion
+    const amount=document.createElement('div');
+    amount.textContent=`$${a.toFixed(2)}`;
+    d.appendChild(label);
+    d.appendChild(amount);
+    grid.appendChild(d);
+  });
+  // separate cells for label and amount
+  const labelDiv=document.createElement('div');
+  labelDiv.textContent='Total';
+  const amountDiv=document.createElement('div');
+  amountDiv.textContent=`$${total.toFixed(2)}`;
+  grid.appendChild(labelDiv);
+  grid.appendChild(amountDiv);
+}
+function renderAll(){
+  renderBranches();
+  renderList();
+  renderTotals();
+  document.getElementById('branchesArea').value=D.branches.join('\n');
+}
+document.getElementById('addBtn').onclick=()=>{
+  const desc=document.getElementById('descInput').value.trim();
+  const amtStr=document.getElementById('amtInput').value;
+  const cat=document.getElementById('catSelect').value;
+  const pay=document.querySelector('input[name="pay"]:checked').value;
+  const branch=document.getElementById('branchSelect').value;
+  const date=document.getElementById('dateInput').value;
+  const amt=Number(amtStr);
+  if(!branch||!date||!amtStr) return alert('Fill branch, date, amount');
+  if(!(amt>0)) return alert('Amount must be a positive number');
+  D.expenses.push({id:uid(),branch,date,desc,amount:amtStr,category:cat,payment:pay});
+  save();
+  renderAll();
+  document.getElementById('descInput').value='';
+  document.getElementById('amtInput').value='';
+};
+document.getElementById('branchSelect').onchange=renderAll;
+document.getElementById('dateInput').onchange=renderAll;
+document.getElementById('saveBranches').onclick=()=>{
+  D.branches=document.getElementById('branchesArea').value.split('\n').map(s=>s.trim()).filter(s=>s);
+  save();
+  renderAll();
+};
+window.addEventListener('aiaf-me',()=>{applyStaffFilter();renderAll();});
+document.getElementById('tabExpenses').onclick=()=>{
+  document.getElementById('viewExpenses').style.display='block';
+  document.getElementById('viewSettings').style.display='none';
+  document.getElementById('tabExpenses').classList.add('active');
+  document.getElementById('tabSettings').classList.remove('active');
+};
+document.getElementById('tabSettings').onclick=()=>{
+  document.getElementById('viewExpenses').style.display='none';
+  document.getElementById('viewSettings').style.display='block';
+  document.getElementById('tabSettings').classList.add('active');
+  document.getElementById('tabExpenses').classList.remove('active');
+};
+load();
+if(!D.branches.length) D.branches=['Main'];
+save();
+renderAll();
+</script>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v1 · 30 Sep 2026</div></body>
+</html>
