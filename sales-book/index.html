@@ -39,7 +39,7 @@ button.full{width:100%}
 .ok{color:var(--g)}
 input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;text-align:left}input::-webkit-date-and-time-value{text-align:left}
 </style>
-<meta name="aiaf-version" content="v3 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"sales-book","keys":["salesbook_v1"],"title":"Sales Book"};</script><script>(function(){
+<meta name="aiaf-version" content="v4 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"sales-book","keys":["salesbook_v1"],"title":"Sales Book"};</script><script>(function(){
   var C=window.__AIAF_SYNC;
   if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
   var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
@@ -50,6 +50,27 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
   function jp(t,d){ try{ var v=JSON.parse(t); return v==null?d:v; }catch(e){ return d; } }
   function enc(x){ return encodeURIComponent(x); }
   var auth=jp(g(P+"auth"),null), snap=jp(g(P+"snap"),{}), last=g(P+"last")||"1970-01-01T00:00:00Z";
+  /* Patch 17: who am I in this space (role + branches). Cached so the app can use it at start-up. */
+  var me=jp(g(P+"me"),null), meChecked=false, blocked=0;
+  window.__aiafMe=me;
+  function setMe(m){
+    var before=JSON.stringify(me||null); me=m; window.__aiafMe=m;
+    if(m) s(P+"me",JSON.stringify(m)); else { try{ rawRemove.call(LS,P+"me"); }catch(e){} }
+    if(JSON.stringify(m||null)!==before){ try{ window.dispatchEvent(new Event("aiaf-me")); }catch(e){} return true; }
+    return false;
+  }
+  function isNoTable(e){ return e && (e.status===404 || /PGRST205|does not exist|schema cache/i.test(e.body||"")); }
+  function loadMe(){
+    var em=String((auth&&auth.email)||"").toLowerCase();
+    return api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(rows){
+      var r=rows&&rows[0];
+      meChecked=true;
+      return setMe(r?{email:em,role:r.role==="admin"?"admin":"staff",branches:Array.isArray(r.branches)?r.branches:[]}:{email:em,role:"none",branches:[]});
+    }, function(e){
+      if(isNoTable(e)){ meChecked=true; return setMe({email:em,role:"admin",branches:[],legacy:true}); }  /* older setup without members: no limits */
+      throw e;
+    });
+  }
   var pulling=false, pushing=false, timer=null, pendingReload=false, st="", stMsg="", chip=null, bar=null;
   function saveAuth(){ if(auth) s(P+"auth",JSON.stringify(auth)); else { try{ rawRemove.call(LS,P+"auth"); }catch(e){} } }
   function saveSnap(){ s(P+"snap",JSON.stringify(snap)); s(P+"last",last); }
@@ -101,7 +122,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
       if(extra) for(var k in extra) h[k]=extra[k];
       return fetch(BASE+path,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(res){
         if(res.status===401){ auth.expires_at=0; saveAuth(); throw new Error("Session expired"); }
-        if(!res.ok) return res.text().then(function(t){ throw new Error("HTTP "+res.status+": "+String(t).slice(0,160)); });
+        if(!res.ok) return res.text().then(function(t){ var er=new Error("HTTP "+res.status+": "+String(t).slice(0,160)); er.status=res.status; er.body=String(t); throw er; });
         return res.text().then(function(t){ return t?JSON.parse(t):null; });
       }, function(){ var e=new Error("offline"); e.offline=true; throw e; });
     });
@@ -193,14 +214,29 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
     var chain=Promise.resolve();
     for(var i=0;i<body.length;i+=200){ (function(part){ chain=chain.then(function(){ return api("POST","/rest/v1/aiaf_app_records?on_conflict=space,app,key,coll,rid",part,{"Prefer":"resolution=merge-duplicates,return=minimal"}); }); })(body.slice(i,i+200)); }
     return chain.then(function(){ rows.forEach(function(r){ snap[r.id]=r.h; }); saveSnap(); pushing=false; },
-                      function(e){ pushing=false; throw e; });
+      function(e){
+        if(!(e && (e.status===403 || /42501|row-level security/i.test(e.body||"")))){ pushing=false; throw e; }
+        /* some rows are outside this person's branches: send one by one, skip the ones not allowed */
+        var one=Promise.resolve(), bad=0;
+        rows.forEach(function(r,ix){ one=one.then(function(){
+          return api("POST","/rest/v1/aiaf_app_records?on_conflict=space,app,key,coll,rid",[body[ix]],{"Prefer":"resolution=merge-duplicates,return=minimal"})
+            .then(function(){ snap[r.id]=r.h; }, function(x){ if(x && (x.status===403 || /42501|row-level security/i.test(x.body||""))){ snap[r.id]=r.h; bad++; return; } throw x; });
+        }); });
+        return one.then(function(){ saveSnap(); pushing=false; blocked+=bad; }, function(x){ saveSnap(); pushing=false; throw x; });
+      });
   }
   var firstPull=true;
   function syncNow(){
     if(!auth){ setStatus("signin"); return Promise.resolve(); }
     setStatus("sync");
-    return pull().then(function(){ return push(); }).then(function(){
-      firstPull=false; setStatus("ok");
+    return (meChecked?Promise.resolve(false):loadMe()).then(function(changed){
+      if(me && me.role==="none"){ setStatus("noaccess","Your account has not been added to this app. Ask the admin to add you."); return "stop"; }
+      if(changed && !firstPull){ location.reload(); return "stop"; }
+      return pull().then(function(){ return push(); });
+    }).then(function(x){
+      if(x==="stop") return;
+      firstPull=false;
+      setStatus("ok", blocked?(blocked+" change(s) were not saved: outside your branches."):"");
     }, function(e){ setStatus(e&&e.offline?"offline":(auth?"err":"signin"), e&&e.message); });
   }
   function busyTyping(){
@@ -228,12 +264,18 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
     +"#aiaf-login input{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:11px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:10px}"
     +"#aiaf-login button{width:100%;font-size:16px;padding:12px;border:0;border-radius:8px;background:#0f2a4a;color:#fff}#aiaf-login .er{color:#c8372d;font-size:14px;min-height:18px;margin-bottom:6px}"
     +"#aiaf-menu{position:fixed;top:calc(34px + env(safe-area-inset-top,0px));right:8px;z-index:2147483000;background:#fff;border:1px solid #d5dde8;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.15);padding:6px;font:14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;min-width:220px}"
+    +"#aiaf-team{position:fixed;inset:0;z-index:2147483001;background:rgba(15,42,74,.35);overflow:auto;padding:16px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}"
+    +"#aiaf-team .bx{background:#fff;border-radius:14px;padding:18px;max-width:420px;margin:0 auto}#aiaf-team h2{margin:0 0 4px;font-size:19px;color:#0f2a4a}#aiaf-team h3{font-size:15px;margin:14px 0 8px;color:#0f2a4a}"
+    +"#aiaf-team p{margin:0 0 10px;color:#6b7785;font-size:13px}#aiaf-team .mb{display:block;width:100%;text-align:left;background:#f4f6f9;border:0;border-radius:8px;padding:9px 10px;margin-bottom:6px;font-size:14px;color:#16202c}#aiaf-team .mb span{color:#6b7785;font-size:13px}"
+    +"#aiaf-team input[type=email],#aiaf-team input:not([type]),#aiaf-team select{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:10px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:8px;background:#fff}"
+    +"#aiaf-team #aiaf-tm-br label{display:inline-flex;align-items:center;gap:6px;margin:0 14px 10px 0;font-size:15px;white-space:nowrap}#aiaf-team #aiaf-tm-br input{width:18px;height:18px;min-width:0;margin:0;padding:0;flex:none}#aiaf-team .er{color:#c8372d;font-size:14px;min-height:18px;margin:4px 0}#aiaf-team .okm{color:#1f7a4d}"
+    +"#aiaf-team button#aiaf-tm-save,#aiaf-team button.sec{font-size:15px;padding:10px 14px;border:0;border-radius:8px;background:#0f2a4a;color:#fff;margin:4px 4px 0 0}#aiaf-team button.sec{background:#eef2f7;color:#0f2a4a}"
     +"#aiaf-menu div{padding:6px 8px;color:#6b7785;font-size:12px}#aiaf-menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 8px;font-size:15px;color:#0f2a4a;border-radius:6px}";
   function esc(t){ return String(t==null?"":t).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
   function paint(){
     if(!chip) return;
-    var txt={ok:"\u2601 Synced",sync:"\u2601 Syncing\u2026",offline:"\u2601 Offline",err:"\u2601 Sync error",signin:"\u2601 Sign in"}[st]||"\u2601";
-    chip.textContent=txt; chip.style.color=(st==="err"?"#c8372d":(st==="offline"?"#9a6b00":"#0f2a4a"));
+    var txt={noaccess:"\u2601 No access",ok:"\u2601 Synced",sync:"\u2601 Syncing\u2026",offline:"\u2601 Offline",err:"\u2601 Sync error",signin:"\u2601 Sign in"}[st]||"\u2601";
+    chip.textContent=txt; chip.style.color=((st==="err"||st==="noaccess")?"#c8372d":(st==="offline"?"#9a6b00":"#0f2a4a"));
     chip.title=stMsg||"";
   }
   function showBar(){
@@ -244,15 +286,17 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
   function toggleMenu(){
     var m=document.getElementById("aiaf-menu"); if(m){ m.parentNode.removeChild(m); return; }
     m=document.createElement("div"); m.id="aiaf-menu";
-    m.innerHTML="<div>"+esc(auth?("Signed in as "+(auth.email||"")):"Not signed in")+(stMsg?("<br>"+esc(stMsg)):"")+"</div>"
-      +"<button type='button' data-a='sync'>Sync now</button>"+(auth?"<button type='button' data-a='out'>Sign out</button><button type='button' data-a='wipe'>Sign out & remove data from this device</button>":"<button type='button' data-a='in'>Sign in</button>");
+    var roleTxt=(auth&&me&&!me.legacy)?(me.role==="admin"?"Admin \u2014 all branches":(me.role==="staff"?("Branches: "+(me.branches.length?me.branches.join(", "):"none")):"")):"";
+    m.innerHTML="<div>"+esc(auth?("Signed in as "+(auth.email||"")):"Not signed in")+(roleTxt?("<br>"+esc(roleTxt)):"")+(stMsg?("<br>"+esc(stMsg)):"")+"</div>"
+      +"<button type='button' data-a='sync'>Sync now</button>"+(auth&&me&&me.role==="admin"&&!me.legacy?"<button type='button' data-a='team'>Team & branches</button>":"")+(auth?"<button type='button' data-a='out'>Sign out</button><button type='button' data-a='wipe'>Sign out & remove data from this device</button>":"<button type='button' data-a='in'>Sign in</button>");
     m.onclick=function(e){
       var a=e.target.getAttribute("data-a"); if(!a) return; m.parentNode.removeChild(m);
-      if(a==="sync") syncNow();
+      if(a==="sync"){ meChecked=false; syncNow(); }
+      else if(a==="team") showTeam();
       else if(a==="in") showLogin();
       else if(a==="out"||a==="wipe"){
         if(a==="wipe" && !confirm("Remove this app's data from this device? It stays in the cloud.")) return;
-        auth=null; saveAuth();
+        auth=null; saveAuth(); setMe(null); meChecked=false;
         if(a==="wipe"){ C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap(); }
         location.reload();
       }
@@ -271,9 +315,65 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
       var em=document.getElementById("aiaf-em").value.trim(), pw=document.getElementById("aiaf-pw").value, er=document.getElementById("aiaf-er"), bt=document.getElementById("aiaf-go");
       if(!em||!pw){ er.textContent="Enter email and password."; return; }
       bt.disabled=true; bt.textContent="Signing in\u2026"; er.textContent="";
-      signIn(em,pw).then(function(){ d.parentNode.removeChild(d); firstPull=true; syncNow(); },
+      signIn(em,pw).then(function(){ d.parentNode.removeChild(d); firstPull=true; meChecked=false; syncNow(); },
         function(x){ bt.disabled=false; bt.textContent="Sign in"; er.textContent=x.message||"Sign-in failed"; });
     };
+  }
+  function knownBranches(){
+    var seen={}, out=[];
+    function add(b){ if(typeof b==="string" && b && !seen["$"+b]){ seen["$"+b]=1; out.push(b); } }
+    C.keys.forEach(function(k){ var o=jp(g(k),null); if(!o||typeof o!=="object"||Array.isArray(o)) return;
+      if(isSetArr(o.branches)) o.branches.forEach(add);
+      Object.keys(o).forEach(function(p){ if(isRecArr(o[p])) o[p].forEach(function(r){ add(r.branch); }); }); });
+    return out;
+  }
+  function showTeam(){
+    if(!document.body||document.getElementById("aiaf-team")) return;
+    var d=document.createElement("div"); d.id="aiaf-team"; document.body.appendChild(d);
+    var list=[], kb=knownBranches();
+    function close(){ if(d.parentNode) d.parentNode.removeChild(d); }
+    function draw(msg,err){
+      var h="<div class='bx'><h2>Team & branches</h2><p>Staff see and add data only for their branches. Admins see all branches.<br>Create the login first in Supabase (Authentication \u2192 Users \u2192 Add user).</p>";
+      h+="<div class='tl'>"+(list.length?list.map(function(m,i){ return "<button type='button' class='mb' data-i='"+i+"'><b>"+esc(m.email)+"</b><br><span>"+(m.role==="admin"?"Admin \u2014 all branches":("Staff \u2014 "+(m.branches&&m.branches.length?esc(m.branches.join(", ")):"no branch yet")))+"</span></button>"; }).join(""):"<p>Loading\u2026</p>")+"</div>";
+      h+="<h3>Add or change</h3><input id='aiaf-tm-em' type='email' placeholder='Email' autocapitalize='off'>"
+        +"<select id='aiaf-tm-role'><option value='staff'>Staff</option><option value='admin'>Admin</option></select>"
+        +"<div id='aiaf-tm-br'>"+kb.map(function(b){ return "<label><input type='checkbox' value='"+esc(b)+"'> "+esc(b)+"</label>"; }).join("")+"</div>"
+        +"<input id='aiaf-tm-more' placeholder='Other branch (optional)'>"
+        +"<div class='er"+(err?"":" okm")+"'>"+esc(msg||"")+"</div>"
+        +"<button type='button' id='aiaf-tm-save'>Save</button> <button type='button' id='aiaf-tm-del' class='sec'>Remove</button> <button type='button' id='aiaf-tm-x' class='sec'>Close</button></div>";
+      d.innerHTML=h;
+      d.querySelector("#aiaf-tm-x").onclick=close;
+      d.querySelector(".tl").onclick=function(e){ var b=e.target.closest?e.target.closest("[data-i]"):null; if(!b) return; var m=list[+b.getAttribute("data-i")]; fill(m); };
+      d.querySelector("#aiaf-tm-save").onclick=save;
+      d.querySelector("#aiaf-tm-del").onclick=removeM;
+    }
+    function fill(m){
+      d.querySelector("#aiaf-tm-em").value=m.email; d.querySelector("#aiaf-tm-role").value=m.role;
+      var extra=[]; (m.branches||[]).forEach(function(b){ if(kb.indexOf(b)<0) extra.push(b); });
+      [].forEach.call(d.querySelectorAll("#aiaf-tm-br input"),function(c){ c.checked=(m.branches||[]).indexOf(c.value)>=0; });
+      d.querySelector("#aiaf-tm-more").value=extra.join(", ");
+    }
+    function load(msg,err){
+      api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&order=email.asc").then(function(r){ list=r||[]; draw(msg,err); }, function(e){ list=[]; draw(e.message||"Could not load the team.",true); });
+    }
+    function save(){
+      var em=d.querySelector("#aiaf-tm-em").value.trim().toLowerCase(), role=d.querySelector("#aiaf-tm-role").value, br=[];
+      [].forEach.call(d.querySelectorAll("#aiaf-tm-br input"),function(c){ if(c.checked) br.push(c.value); });
+      d.querySelector("#aiaf-tm-more").value.split(",").forEach(function(x){ x=x.trim(); if(x && br.indexOf(x)<0) br.push(x); });
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ draw("Enter a valid email.",true); return; }
+      if(role==="staff" && !br.length){ draw("Pick at least one branch for staff.",true); return; }
+      if(me && em===me.email && role!=="admin"){ draw("You cannot remove your own admin role.",true); return; }
+      api("POST","/rest/v1/aiaf_members?on_conflict=space,email",[{space:C.space,email:em,role:role,branches:role==="admin"?[]:br}],{"Prefer":"resolution=merge-duplicates,return=minimal"})
+        .then(function(){ load("Saved "+em+".",false); }, function(e){ draw(e.message||"Could not save.",true); });
+    }
+    function removeM(){
+      var em=d.querySelector("#aiaf-tm-em").value.trim().toLowerCase();
+      if(!em){ draw("Tap a person in the list first.",true); return; }
+      if(me && em===me.email){ draw("You cannot remove yourself.",true); return; }
+      if(!confirm("Remove "+em+" from this app? Their login stays in Supabase.")) return;
+      api("DELETE","/rest/v1/aiaf_members?space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(){ load("Removed "+em+".",false); }, function(e){ draw(e.message||"Could not remove.",true); });
+    }
+    draw(""); load("");
   }
   function boot(){
     var stl=document.createElement("style"); stl.textContent=CSS; document.head.appendChild(stl);
@@ -285,7 +385,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
   setInterval(function(){ if(!document.hidden && auth) syncNow(); },20000);
   document.addEventListener("visibilitychange",function(){ if(!document.hidden && auth) syncNow(); });
   window.addEventListener("online",function(){ if(auth) syncNow(); });
-  window.__aiafSync={ now:syncNow, state:function(){ return {st:st,msg:stMsg,auth:!!auth,last:last,snap:Object.keys(snap).length}; } };
+  window.__aiafSync={ now:syncNow, me:function(){ return me; }, team:showTeam, state:function(){ return {st:st,msg:stMsg,auth:!!auth,last:last,snap:Object.keys(snap).length,me:me}; } };
 })();
 </script></head>
 <body>
@@ -311,10 +411,10 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
 <div id="debtDetail" class="hide"></div>
 </section>
 <section id="vSet" class="hide">
-<div class="card"><h2>Branches</h2><p class="muted">One branch per line.</p>
+<div class="card" id="brCard"><h2>Branches</h2><p class="muted">One branch per line.</p>
 <div class="f"><textarea id="brText" rows="4"></textarea></div>
 <button id="saveBr">Save branches</button> <span id="brMsg" class="muted"></span></div>
-<div class="card"><h2>Data</h2><p class="muted">All data is saved on this device.</p><button class="ghost" id="clearAll">Delete all data</button></div>
+<div class="card" id="dataCard"><h2>Data</h2><p class="muted" id="dataNote">All data is saved on this device.</p><button class="ghost" id="clearAll">Delete all data</button></div>
 </section>
 </main>
 <nav class="tabs"><button id="tSales" class="on">Sales</button><button id="tDebts">Debts</button><button id="tSet">Settings</button></nav>
@@ -332,8 +432,14 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function today(){var d=new Date();function z(n){return (n<10?"0":"")+n;}return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate());}
 var cur=null;
 function br(){return $("branch").value;}
-function allBranches(){var l=D.branches.slice();D.sales.concat(D.pays).forEach(function(x){if(x&&x.branch&&l.indexOf(x.branch)<0)l.push(x.branch);});return l;}
-function fillBranches(){var s=$("branch"),v=s.value,l=allBranches(),h="";for(var i=0;i<l.length;i++){h+="<option>"+esc(l[i])+"</option>";}s.innerHTML=h;if(v&&l.indexOf(v)>=0)s.value=v;}
+function me(){var m=window.__aiafMe;return m&&!m.legacy?m:null;}
+function staff(){var m=me();return !!(m&&m.role!=="admin");}
+function allBranches(){var l=D.branches.slice();D.sales.concat(D.pays).forEach(function(x){if(x&&x.branch&&l.indexOf(x.branch)<0)l.push(x.branch);});
+ var m=me();if(m&&m.role==="staff")return m.branches.slice();if(m&&m.role==="none")return [];return l;}
+function fillBranches(){var s=$("branch"),v=s.value,l=allBranches(),h="";for(var i=0;i<l.length;i++){h+="<option>"+esc(l[i])+"</option>";}s.innerHTML=h||"<option value=\"\">No branch</option>";if(v&&l.indexOf(v)>=0)s.value=v;applyRole();}
+function applyRole(){var st=staff();$("brCard").classList.toggle("hide",st);$("dataCard").classList.toggle("hide",st);
+ $("dataNote").textContent=me()?"Data is shared with your team. Deleting removes it for everyone.":"All data is saved on this device.";
+ var ok=!!br(),msg="You have no branch yet. Ask the admin to add you to a branch.";$("addSale").disabled=!ok;if(!ok)$("saleErr").textContent=msg;else if($("saleErr").textContent===msg)$("saleErr").textContent="";}
 function renderSales(){
  var l=D.sales.filter(function(x){return x.branch===br()&&x.date===$("day").value;}),h="",t={Cash:0,Zaad:0,eDahab:0,Debt:0};
  for(var i=0;i<l.length;i++){var s=l[i];t[s.method]=(t[s.method]||0)+s.amt;
@@ -395,9 +501,10 @@ function init(){
  $("tSales").onclick=function(){show("Sales");};$("tDebts").onclick=function(){show("Debts");};$("tSet").onclick=function(){show("Set");};
  $("saveBr").onclick=function(){var l=$("brText").value.split("\n").map(function(x){return x.trim();}).filter(function(x){return x;});
   if(!l.length){$("brMsg").textContent="Add at least one branch.";return;}D.branches=l;save();fillBranches();renderSales();$("brMsg").textContent="Saved.";};
- $("clearAll").onclick=function(){if(!confirm("Delete ALL sales and payments on this device?"))return;D.sales=[];D.pays=[];save();renderSales();};
+ $("clearAll").onclick=function(){if(!confirm(me()?"Delete ALL sales and payments for everyone on the team?":"Delete ALL sales and payments on this device?"))return;D.sales=[];D.pays=[];save();renderSales();};
 }
 window.onload=init;
+window.addEventListener("aiaf-me",function(){if(!D)return;fillBranches();renderSales();if(!$("vDebts").classList.contains("hide")){cur=null;renderDebts();}});
 </script>
-<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v3 · 30 Sep 2026</div></body>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v4 · 30 Sep 2026</div></body>
 </html>
