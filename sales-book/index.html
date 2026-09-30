@@ -39,7 +39,7 @@ button.full{width:100%}
 .ok{color:var(--g)}
 input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;text-align:left}input::-webkit-date-and-time-value{text-align:left}
 </style>
-<meta name="aiaf-version" content="v4 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"sales-book","keys":["salesbook_v1"],"title":"Sales Book"};</script><script>(function(){
+<meta name="aiaf-version" content="v5 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"sales-book","keys":["salesbook_v1"],"title":"Sales Book"};</script><script>(function(){
   var C=window.__AIAF_SYNC;
   if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
   var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
@@ -268,7 +268,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
     +"#aiaf-team .bx{background:#fff;border-radius:14px;padding:18px;max-width:420px;margin:0 auto}#aiaf-team h2{margin:0 0 4px;font-size:19px;color:#0f2a4a}#aiaf-team h3{font-size:15px;margin:14px 0 8px;color:#0f2a4a}"
     +"#aiaf-team p{margin:0 0 10px;color:#6b7785;font-size:13px}#aiaf-team .mb{display:block;width:100%;text-align:left;background:#f4f6f9;border:0;border-radius:8px;padding:9px 10px;margin-bottom:6px;font-size:14px;color:#16202c}#aiaf-team .mb span{color:#6b7785;font-size:13px}"
     +"#aiaf-team input[type=email],#aiaf-team input:not([type]),#aiaf-team select{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:10px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:8px;background:#fff}"
-    +"#aiaf-team #aiaf-tm-br label{display:inline-flex;align-items:center;gap:6px;margin:0 14px 10px 0;font-size:15px;white-space:nowrap}#aiaf-team #aiaf-tm-br input{width:18px;height:18px;min-width:0;margin:0;padding:0;flex:none}#aiaf-team .er{color:#c8372d;font-size:14px;min-height:18px;margin:4px 0}#aiaf-team .okm{color:#1f7a4d}"
+    +"#aiaf-team #aiaf-tm-br label{display:inline-flex;align-items:center;gap:6px;margin:0 14px 10px 0;font-size:15px;white-space:nowrap}#aiaf-team #aiaf-tm-br input{width:18px;height:18px;min-width:0;margin:0;padding:0;flex:none}#aiaf-team .er{color:#c8372d;font-size:14px;min-height:18px;margin:4px 0}#aiaf-team .okm{color:#1f7a4d}#aiaf-team .mb .warn{color:#c8372d}"
     +"#aiaf-team button#aiaf-tm-save,#aiaf-team button.sec{font-size:15px;padding:10px 14px;border:0;border-radius:8px;background:#0f2a4a;color:#fff;margin:4px 4px 0 0}#aiaf-team button.sec{background:#eef2f7;color:#0f2a4a}"
     +"#aiaf-menu div{padding:6px 8px;color:#6b7785;font-size:12px}#aiaf-menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 8px;font-size:15px;color:#0f2a4a;border-radius:6px}";
   function esc(t){ return String(t==null?"":t).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
@@ -296,18 +296,23 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
       else if(a==="in") showLogin();
       else if(a==="out"||a==="wipe"){
         if(a==="wipe" && !confirm("Remove this app's data from this device? It stays in the cloud.")) return;
-        auth=null; saveAuth(); setMe(null); meChecked=false;
-        if(a==="wipe"){ C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap(); }
-        location.reload();
+        setStatus("sync","Saving your changes\u2026");
+        push().then(function(){ return true; }, function(){ return confirm("Some changes could not be sent (no connection). Sign out anyway? They stay on this phone and are sent next time you sign in with the same account."); })
+          .then(function(go){ if(!go){ setStatus("err","Not signed out."); return; } finishOut(a); });
       }
     };
     document.body.appendChild(m);
+  }
+  function finishOut(a){
+        auth=null; saveAuth(); setMe(null); meChecked=false;
+        if(a==="wipe"){ C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap(); }
+        location.reload();
   }
   function showLogin(){
     if(!document.body||document.getElementById("aiaf-login")) return;
     var d=document.createElement("div"); d.id="aiaf-login";
     d.innerHTML="<form class='bx' novalidate><h2>"+esc(C.title||"Sign in")+"</h2><p>Sign in to share data between devices.<br>Gal si xogta loo wadaago.</p>"
-      +"<input id='aiaf-em' type='email' autocomplete='username' placeholder='Email'><input id='aiaf-pw' type='password' autocomplete='current-password' placeholder='Password'>"
+      +"<input id='aiaf-em' type='email' autocomplete='username' autocapitalize='off' autocorrect='off' spellcheck='false' placeholder='Email'><input id='aiaf-pw' type='password' autocomplete='current-password' placeholder='Password'>"
       +"<div class='er' id='aiaf-er'></div><button type='submit' id='aiaf-go'>Sign in</button></form>";
     document.body.appendChild(d);
     d.querySelector("form").onsubmit=function(e){
@@ -315,7 +320,15 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
       var em=document.getElementById("aiaf-em").value.trim(), pw=document.getElementById("aiaf-pw").value, er=document.getElementById("aiaf-er"), bt=document.getElementById("aiaf-go");
       if(!em||!pw){ er.textContent="Enter email and password."; return; }
       bt.disabled=true; bt.textContent="Signing in\u2026"; er.textContent="";
-      signIn(em,pw).then(function(){ d.parentNode.removeChild(d); firstPull=true; meChecked=false; syncNow(); },
+      signIn(em,pw).then(function(){
+          d.parentNode.removeChild(d); firstPull=true; meChecked=false;
+          var who=String(auth.email||em).toLowerCase(), prev=g(P+"lastuser");
+          s(P+"lastuser",who);
+          if(prev && prev!==who){
+            C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap();
+            syncNow().then(function(){ location.reload(); }); return;
+          }
+          syncNow(); },
         function(x){ bt.disabled=false; bt.textContent="Sign in"; er.textContent=x.message||"Sign-in failed"; });
     };
   }
@@ -327,51 +340,66 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
       Object.keys(o).forEach(function(p){ if(isRecArr(o[p])) o[p].forEach(function(r){ add(r.branch); }); }); });
     return out;
   }
+  function cleanEmail(x){ return String(x||"").trim().replace(/^mailto:/i,"").trim().toLowerCase(); }
   function showTeam(){
     if(!document.body||document.getElementById("aiaf-team")) return;
     var d=document.createElement("div"); d.id="aiaf-team"; document.body.appendChild(d);
-    var list=[], kb=knownBranches();
+    var list=[], logins=null, kb=knownBranches(), cur={email:"",role:"staff",branches:[]};
     function close(){ if(d.parentNode) d.parentNode.removeChild(d); }
+    function inTeam(em){ for(var i=0;i<list.length;i++){ if(list[i].email===em) return list[i]; } return null; }
+    function hasLogin(em){ return !logins || logins.indexOf(em)>=0; }
     function draw(msg,err){
       var h="<div class='bx'><h2>Team & branches</h2><p>Staff see and add data only for their branches. Admins see all branches.<br>Create the login first in Supabase (Authentication \u2192 Users \u2192 Add user).</p>";
-      h+="<div class='tl'>"+(list.length?list.map(function(m,i){ return "<button type='button' class='mb' data-i='"+i+"'><b>"+esc(m.email)+"</b><br><span>"+(m.role==="admin"?"Admin \u2014 all branches":("Staff \u2014 "+(m.branches&&m.branches.length?esc(m.branches.join(", ")):"no branch yet")))+"</span></button>"; }).join(""):"<p>Loading\u2026</p>")+"</div>";
-      h+="<h3>Add or change</h3><input id='aiaf-tm-em' type='email' placeholder='Email' autocapitalize='off'>"
-        +"<select id='aiaf-tm-role'><option value='staff'>Staff</option><option value='admin'>Admin</option></select>"
-        +"<div id='aiaf-tm-br'>"+kb.map(function(b){ return "<label><input type='checkbox' value='"+esc(b)+"'> "+esc(b)+"</label>"; }).join("")+"</div>"
-        +"<input id='aiaf-tm-more' placeholder='Other branch (optional)'>"
+      h+="<div class='tl'>"+(list.length?list.map(function(m,i){ return "<button type='button' class='mb' data-i='"+i+"'><b>"+esc(m.email)+"</b><br><span>"+(m.role==="admin"?"Admin \u2014 all branches":("Staff \u2014 "+(m.branches&&m.branches.length?esc(m.branches.join(", ")):"no branch yet")))+"</span>"+(hasLogin(m.email)?"":"<br><span class='warn'>No login with this email in Supabase</span>")+"</button>"; }).join(""):"<p>Loading\u2026</p>")+"</div>";
+      h+="<h3>"+(cur.email&&inTeam(cur.email)?"Change":"Add a person")+"</h3>";
+      if(logins){
+        var opts=logins.slice(); if(cur.email && opts.indexOf(cur.email)<0) opts.push(cur.email);
+        h+="<select id='aiaf-tm-em'><option value=''>Choose a login\u2026</option>"+opts.map(function(em){ var t=inTeam(em); return "<option value='"+esc(em)+"'"+(em===cur.email?" selected":"")+">"+esc(em)+(t?" (in team)":"")+(logins.indexOf(em)<0?" (no login)":"")+"</option>"; }).join("")+"</select>";
+      } else {
+        h+="<input id='aiaf-tm-em' type='email' placeholder='Email' autocapitalize='off' autocorrect='off' spellcheck='false' value='"+esc(cur.email)+"'>";
+      }
+      h+="<select id='aiaf-tm-role'><option value='staff'"+(cur.role!=="admin"?" selected":"")+">Staff</option><option value='admin'"+(cur.role==="admin"?" selected":"")+">Admin</option></select>"
+        +"<div id='aiaf-tm-br'>"+kb.map(function(b){ return "<label><input type='checkbox' value='"+esc(b)+"'"+((cur.branches||[]).indexOf(b)>=0?" checked":"")+"> "+esc(b)+"</label>"; }).join("")+"</div>"
+        +"<input id='aiaf-tm-more' placeholder='Other branch (optional)' value='"+esc((cur.branches||[]).filter(function(b){ return kb.indexOf(b)<0; }).join(", "))+"'>"
         +"<div class='er"+(err?"":" okm")+"'>"+esc(msg||"")+"</div>"
         +"<button type='button' id='aiaf-tm-save'>Save</button> <button type='button' id='aiaf-tm-del' class='sec'>Remove</button> <button type='button' id='aiaf-tm-x' class='sec'>Close</button></div>";
       d.innerHTML=h;
       d.querySelector("#aiaf-tm-x").onclick=close;
-      d.querySelector(".tl").onclick=function(e){ var b=e.target.closest?e.target.closest("[data-i]"):null; if(!b) return; var m=list[+b.getAttribute("data-i")]; fill(m); };
+      d.querySelector(".tl").onclick=function(e){ var b=e.target.closest?e.target.closest("[data-i]"):null; if(!b) return; var m=list[+b.getAttribute("data-i")]; cur={email:m.email,role:m.role,branches:(m.branches||[]).slice()}; draw(""); };
+      var sel=d.querySelector("#aiaf-tm-em");
+      if(sel.tagName==="SELECT") sel.onchange=function(){ var em=sel.value, t=inTeam(em); readForm(); cur.email=em; if(t){ cur.role=t.role; cur.branches=(t.branches||[]).slice(); } draw(""); };
       d.querySelector("#aiaf-tm-save").onclick=save;
       d.querySelector("#aiaf-tm-del").onclick=removeM;
     }
-    function fill(m){
-      d.querySelector("#aiaf-tm-em").value=m.email; d.querySelector("#aiaf-tm-role").value=m.role;
-      var extra=[]; (m.branches||[]).forEach(function(b){ if(kb.indexOf(b)<0) extra.push(b); });
-      [].forEach.call(d.querySelectorAll("#aiaf-tm-br input"),function(c){ c.checked=(m.branches||[]).indexOf(c.value)>=0; });
-      d.querySelector("#aiaf-tm-more").value=extra.join(", ");
-    }
-    function load(msg,err){
-      api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&order=email.asc").then(function(r){ list=r||[]; draw(msg,err); }, function(e){ list=[]; draw(e.message||"Could not load the team.",true); });
-    }
-    function save(){
-      var em=d.querySelector("#aiaf-tm-em").value.trim().toLowerCase(), role=d.querySelector("#aiaf-tm-role").value, br=[];
+    function readForm(){
+      var br=[];
       [].forEach.call(d.querySelectorAll("#aiaf-tm-br input"),function(c){ if(c.checked) br.push(c.value); });
       d.querySelector("#aiaf-tm-more").value.split(",").forEach(function(x){ x=x.trim(); if(x && br.indexOf(x)<0) br.push(x); });
-      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ draw("Enter a valid email.",true); return; }
+      cur={email:cleanEmail(d.querySelector("#aiaf-tm-em").value),role:d.querySelector("#aiaf-tm-role").value,branches:br};
+    }
+    function load(msg,err){
+      api("GET","/rest/v1/aiaf_members?select=email,role,branches&space=eq."+enc(C.space)+"&order=email.asc").then(function(r){
+        list=r||[];
+        return api("POST","/rest/v1/rpc/aiaf_login_emails",{p_space:C.space}).then(function(x){
+          logins=(x||[]).map(function(v){ return cleanEmail(typeof v==="string"?v:(v&&(v.aiaf_login_emails||v.email))); }).filter(function(v){ return v; });
+        }, function(){ logins=null; });   /* older setup: type the email */
+      }).then(function(){ draw(msg,err); }, function(e){ draw(e.message||"Could not load the team.",true); });
+    }
+    function save(){
+      readForm(); var em=cur.email, role=cur.role, br=cur.branches;
+      if(!/^[^@\s:]+@[^@\s]+\.[^@\s]+$/.test(em)){ draw(logins?"Choose a login.":"Enter a valid email.",true); return; }
+      if(logins && logins.indexOf(em)<0){ draw("There is no login with this email in Supabase. Check the spelling or create it first.",true); return; }
       if(role==="staff" && !br.length){ draw("Pick at least one branch for staff.",true); return; }
       if(me && em===me.email && role!=="admin"){ draw("You cannot remove your own admin role.",true); return; }
       api("POST","/rest/v1/aiaf_members?on_conflict=space,email",[{space:C.space,email:em,role:role,branches:role==="admin"?[]:br}],{"Prefer":"resolution=merge-duplicates,return=minimal"})
-        .then(function(){ load("Saved "+em+".",false); }, function(e){ draw(e.message||"Could not save.",true); });
+        .then(function(){ cur={email:"",role:"staff",branches:[]}; load("Saved "+em+".",false); }, function(e){ draw(e.message||"Could not save.",true); });
     }
     function removeM(){
-      var em=d.querySelector("#aiaf-tm-em").value.trim().toLowerCase();
-      if(!em){ draw("Tap a person in the list first.",true); return; }
+      readForm(); var em=cur.email;
+      if(!em || !inTeam(em)){ draw("Tap a person in the list first.",true); return; }
       if(me && em===me.email){ draw("You cannot remove yourself.",true); return; }
       if(!confirm("Remove "+em+" from this app? Their login stays in Supabase.")) return;
-      api("DELETE","/rest/v1/aiaf_members?space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(){ load("Removed "+em+".",false); }, function(e){ draw(e.message||"Could not remove.",true); });
+      api("DELETE","/rest/v1/aiaf_members?space=eq."+enc(C.space)+"&email=eq."+enc(em)).then(function(){ cur={email:"",role:"staff",branches:[]}; load("Removed "+em+".",false); }, function(e){ draw(e.message||"Could not remove.",true); });
     }
     draw(""); load("");
   }
@@ -379,6 +407,7 @@ input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;max-width:1
     var stl=document.createElement("style"); stl.textContent=CSS; document.head.appendChild(stl);
     chip=document.createElement("button"); chip.id="aiaf-chip"; chip.type="button"; chip.onclick=toggleMenu; document.body.appendChild(chip);
     if(!auth){ setStatus("signin"); showLogin(); return; }
+    if(!g(P+"lastuser") && auth.email) s(P+"lastuser",String(auth.email).toLowerCase());
     syncNow();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot); else boot();
@@ -506,5 +535,5 @@ function init(){
 window.onload=init;
 window.addEventListener("aiaf-me",function(){if(!D)return;fillBranches();renderSales();if(!$("vDebts").classList.contains("hide")){cur=null;renderDebts();}});
 </script>
-<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v4 · 30 Sep 2026</div></body>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v5 · 30 Sep 2026</div></body>
 </html>
