@@ -38,7 +38,233 @@ button.full{width:100%}
 .bal{font-weight:700;color:var(--r)}
 .ok{color:var(--g)}
 </style>
-<meta name="aiaf-version" content="v1 · 29 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"></head>
+<meta name="aiaf-version" content="v2 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Sales Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"sales-book","keys":["salesbook_v1"],"title":"Sales Book"};</script><script>(function(){
+  var C=window.__AIAF_SYNC;
+  if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
+  var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
+  var rawSet=Storage.prototype.setItem, rawGet=Storage.prototype.getItem, rawRemove=Storage.prototype.removeItem;
+  var P="__aiaf_sync_"+C.space+"_"+C.app+"_";
+  function g(k){ try{ return rawGet.call(LS,k); }catch(e){ return null; } }
+  function s(k,v){ try{ rawSet.call(LS,k,v); }catch(e){} }
+  function jp(t,d){ try{ var v=JSON.parse(t); return v==null?d:v; }catch(e){ return d; } }
+  function enc(x){ return encodeURIComponent(x); }
+  var auth=jp(g(P+"auth"),null), snap=jp(g(P+"snap"),{}), last=g(P+"last")||"1970-01-01T00:00:00Z";
+  var pulling=false, pushing=false, timer=null, pendingReload=false, st="", stMsg="", chip=null, bar=null;
+  function saveAuth(){ if(auth) s(P+"auth",JSON.stringify(auth)); else { try{ rawRemove.call(LS,P+"auth"); }catch(e){} } }
+  function saveSnap(){ s(P+"snap",JSON.stringify(snap)); s(P+"last",last); }
+  /* stable JSON (sorted keys) so the database's key order never looks like a change */
+  function stable(v){
+    if(v===null||typeof v!=="object") return JSON.stringify(v);
+    if(Array.isArray(v)) return "["+v.map(stable).join(",")+"]";
+    return "{"+Object.keys(v).sort().map(function(k){ return JSON.stringify(k)+":"+stable(v[k]); }).join(",")+"}";
+  }
+  function hash(str){ var h=5381,i; for(i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return "h"+h+"_"+str.length; }
+  function isRecArr(v){ if(!Array.isArray(v)) return false; for(var i=0;i<v.length;i++){ if(!v[i]||typeof v[i]!=="object"||v[i].id==null) return false; } return true; }
+  function flatten(key,val){
+    var out={};
+    if(val&&typeof val==="object"&&!Array.isArray(val)){
+      Object.keys(val).forEach(function(p){
+        var v=val[p];
+        if(isRecArr(v)&&v.length) v.forEach(function(r){ out[key+"|"+p+"|"+String(r.id)]={coll:p,rid:String(r.id),data:r}; });
+        else if(isRecArr(v)) { /* empty list: nothing to send */ }
+        else out[key+"|_meta|"+p]={coll:"_meta",rid:p,data:{v:v}};
+      });
+    } else out[key+"|_meta|_value"]={coll:"_meta",rid:"_value",data:{v:val}};
+    return out;
+  }
+  function localFlat(){
+    var all={};
+    C.keys.forEach(function(key){ var raw=g(key); if(raw==null) return; var val=jp(raw,undefined); if(val===undefined) return; var f=flatten(key,val); for(var id in f) all[id]=f[id]; });
+    return all;
+  }
+  function localDiff(){
+    var fl=localFlat(), rows=[];
+    Object.keys(fl).forEach(function(id){ var h=hash(stable(fl[id].data)); if(snap[id]!==h) rows.push({id:id,key:id.split("|")[0],coll:fl[id].coll,rid:fl[id].rid,data:fl[id].data,deleted:false,h:h}); });
+    Object.keys(snap).forEach(function(id){
+      if(fl[id]||snap[id]==="D") return;
+      var parts=id.split("|"); if(C.keys.indexOf(parts[0])<0) return;
+      rows.push({id:id,key:parts[0],coll:parts[1],rid:parts.slice(2).join("|"),data:null,deleted:true,h:"D"});
+    });
+    return rows;
+  }
+  function setStatus(x,msg){ st=x; stMsg=msg||""; paint(); }
+  function api(method,path,body,extra){
+    return ensureToken().then(function(){
+      var h={"apikey":C.anon,"Authorization":"Bearer "+auth.access_token,"Content-Type":"application/json"};
+      if(extra) for(var k in extra) h[k]=extra[k];
+      return fetch(BASE+path,{method:method,headers:h,body:body?JSON.stringify(body):undefined}).then(function(res){
+        if(res.status===401){ auth.expires_at=0; saveAuth(); throw new Error("Session expired"); }
+        if(!res.ok) return res.text().then(function(t){ throw new Error("HTTP "+res.status+": "+String(t).slice(0,160)); });
+        return res.text().then(function(t){ return t?JSON.parse(t):null; });
+      }, function(){ var e=new Error("offline"); e.offline=true; throw e; });
+    });
+  }
+  function setAuth(d){
+    auth={ access_token:d.access_token, refresh_token:d.refresh_token, expires_at:Date.now()+((d.expires_in||3600)*1000), email:(d.user&&d.user.email)||(auth&&auth.email)||"" };
+    saveAuth();
+  }
+  function ensureToken(){
+    if(!auth) return Promise.reject(new Error("signin"));
+    if(auth.expires_at && Date.now()<auth.expires_at-60000) return Promise.resolve();
+    return fetch(BASE+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{"apikey":C.anon,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:auth.refresh_token})})
+      .then(function(r){
+        if(!r.ok){ if(r.status===400||r.status===401){ auth=null; saveAuth(); showLogin(); } throw new Error("signin"); }
+        return r.json();
+      }, function(){ var e=new Error("offline"); e.offline=true; throw e; })
+      .then(function(d){ setAuth(d); });
+  }
+  function signIn(email,pw){
+    return fetch(BASE+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":C.anon,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})})
+      .then(function(r){ return r.text().then(function(t){ var d=jp(t,{}); if(!r.ok) throw new Error(d.error_description||d.msg||d.message||"Sign-in failed"); return d; }); },
+            function(){ throw new Error("No internet connection."); })
+      .then(function(d){ setAuth(d); if(!auth.email) auth.email=email; saveAuth(); });
+  }
+  function applyRow(obj,r){
+    if(r.coll==="_meta"){
+      if(r.rid==="_value") return { whole:true, v:r.deleted?null:(r.data?r.data.v:null) };
+      if(r.deleted) delete obj[r.rid]; else obj[r.rid]=r.data?r.data.v:null;
+      return null;
+    }
+    var arr=obj[r.coll]; if(!Array.isArray(arr)) arr=obj[r.coll]=[];
+    var ix=-1; for(var i=0;i<arr.length;i++){ if(arr[i]&&String(arr[i].id)===r.rid){ ix=i; break; } }
+    if(r.deleted){ if(ix>=0) arr.splice(ix,1); } else if(ix>=0) arr[ix]=r.data; else arr.push(r.data);
+    return null;
+  }
+  function pull(){
+    if(!auth||pulling) return Promise.resolve(false);
+    pulling=true;
+    var since=new Date(new Date(last).getTime()-3000).toISOString();
+    var q="/rest/v1/aiaf_app_records?select=key,coll,rid,data,deleted,updated_at&space=eq."+enc(C.space)+"&app=eq."+enc(C.app)
+      +"&updated_at=gt."+enc(since)+"&order=updated_at.asc&limit=1000";
+    return api("GET",q).then(function(rows){
+      pulling=false; rows=rows||[];
+      var fl=localFlat(), objs={}, changedKeys={}, maxTs=last;
+      rows.forEach(function(r){
+        if(r.updated_at && r.updated_at>maxTs) maxTs=r.updated_at;
+        if(C.keys.indexOf(r.key)<0) return;
+        var id=r.key+"|"+r.coll+"|"+r.rid, rh=r.deleted?"D":hash(stable(r.data));
+        var lh=fl[id]?hash(stable(fl[id].data)):(snap[id]&&snap[id]!=="D"?"GONE":undefined);
+        if(lh!==undefined && lh!==snap[id]) return;          /* changed here and not sent yet: this device wins */
+        if(r.deleted && lh===undefined){ snap[id]="D"; return; }   /* already gone here */
+        if(rh===snap[id] && (lh===rh || (r.deleted && lh===undefined))) return;   /* already the same */
+        if(!(r.key in objs)){ var raw=g(r.key); objs[r.key]=jp(raw,{}); if(typeof objs[r.key]!=="object"||objs[r.key]===null||Array.isArray(objs[r.key])) objs[r.key]={}; }
+        var res=applyRow(objs[r.key],r);
+        if(res&&res.whole) objs[r.key]={__whole:true,v:res.v};
+        snap[id]=rh; changedKeys[r.key]=1;
+      });
+      var changed=false;
+      Object.keys(changedKeys).forEach(function(k){
+        var o=objs[k]; s(k, JSON.stringify(o&&o.__whole?o.v:o)); changed=true;
+      });
+      last=maxTs; saveSnap();
+      if(rows.length>=1000) return pull().then(function(more){ if(changed&&!more) onRemoteChange(); return changed||more; });
+      if(changed) onRemoteChange();
+      return changed;
+    }, function(e){ pulling=false; throw e; });
+  }
+  function push(){
+    if(!auth||pushing) return Promise.resolve();
+    var rows=localDiff(); if(!rows.length) return Promise.resolve();
+    pushing=true;
+    var body=rows.map(function(r){ return {space:C.space,app:C.app,key:r.key,coll:r.coll,rid:r.rid,data:r.data,deleted:r.deleted,updated_by:(auth&&auth.email)||""}; });
+    var chain=Promise.resolve();
+    for(var i=0;i<body.length;i+=200){ (function(part){ chain=chain.then(function(){ return api("POST","/rest/v1/aiaf_app_records?on_conflict=space,app,key,coll,rid",part,{"Prefer":"resolution=merge-duplicates,return=minimal"}); }); })(body.slice(i,i+200)); }
+    return chain.then(function(){ rows.forEach(function(r){ snap[r.id]=r.h; }); saveSnap(); pushing=false; },
+                      function(e){ pushing=false; throw e; });
+  }
+  var firstPull=true;
+  function syncNow(){
+    if(!auth){ setStatus("signin"); return Promise.resolve(); }
+    setStatus("sync");
+    return pull().then(function(){ return push(); }).then(function(){
+      firstPull=false; setStatus("ok");
+    }, function(e){ setStatus(e&&e.offline?"offline":(auth?"err":"signin"), e&&e.message); });
+  }
+  function busyTyping(){
+    var a=document.activeElement;
+    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  }
+  function onRemoteChange(){
+    if(firstPull && !pendingReload){ pendingReload=true; location.reload(); return; }
+    if(document.hidden && !busyTyping()){ location.reload(); return; }
+    showBar();
+  }
+  function schedulePush(){
+    if(timer) clearTimeout(timer);
+    timer=setTimeout(function(){ timer=null; if(!auth) return; setStatus("sync"); push().then(function(){ setStatus("ok"); }, function(e){ setStatus(e&&e.offline?"offline":"err", e&&e.message); }); }, 1200);
+  }
+  Storage.prototype.setItem=function(k,v){ rawSet.call(this,k,v); if(this===LS && C.keys.indexOf(String(k))>=0) schedulePush(); };
+  Storage.prototype.removeItem=function(k){ rawRemove.call(this,k); if(this===LS && C.keys.indexOf(String(k))>=0) schedulePush(); };
+  /* ---- small UI: status chip, update bar, sign-in screen ---- */
+  var CSS="#aiaf-chip{position:fixed;top:calc(6px + env(safe-area-inset-top,0px));right:8px;z-index:2147483000;font:12px -apple-system,Segoe UI,Roboto,Arial,sans-serif;"
+    +"background:rgba(255,255,255,.92);color:#0f2a4a;border:1px solid #d5dde8;border-radius:12px;padding:3px 8px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12)}"
+    +"#aiaf-bar{position:fixed;left:50%;transform:translateX(-50%);top:calc(40px + env(safe-area-inset-top,0px));z-index:2147483000;background:#0f2a4a;color:#fff;border:0;border-radius:18px;padding:9px 16px;font:14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.25)}"
+    +"#aiaf-login{position:fixed;inset:0;z-index:2147483001;background:#f4f6f9;display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}"
+    +"#aiaf-login .bx{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:360px;box-shadow:0 2px 10px rgba(0,0,0,.08)}"
+    +"#aiaf-login h2{margin:0 0 4px;font-size:20px;color:#0f2a4a}#aiaf-login p{margin:0 0 14px;color:#6b7785;font-size:14px}"
+    +"#aiaf-login input{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:11px;border:1px solid #d5dde8;border-radius:8px;margin-bottom:10px}"
+    +"#aiaf-login button{width:100%;font-size:16px;padding:12px;border:0;border-radius:8px;background:#0f2a4a;color:#fff}#aiaf-login .er{color:#c8372d;font-size:14px;min-height:18px;margin-bottom:6px}"
+    +"#aiaf-menu{position:fixed;top:calc(34px + env(safe-area-inset-top,0px));right:8px;z-index:2147483000;background:#fff;border:1px solid #d5dde8;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.15);padding:6px;font:14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;min-width:220px}"
+    +"#aiaf-menu div{padding:6px 8px;color:#6b7785;font-size:12px}#aiaf-menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 8px;font-size:15px;color:#0f2a4a;border-radius:6px}";
+  function esc(t){ return String(t==null?"":t).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function paint(){
+    if(!chip) return;
+    var txt={ok:"\u2601 Synced",sync:"\u2601 Syncing\u2026",offline:"\u2601 Offline",err:"\u2601 Sync error",signin:"\u2601 Sign in"}[st]||"\u2601";
+    chip.textContent=txt; chip.style.color=(st==="err"?"#c8372d":(st==="offline"?"#9a6b00":"#0f2a4a"));
+    chip.title=stMsg||"";
+  }
+  function showBar(){
+    if(bar||!document.body) return;
+    bar=document.createElement("button"); bar.id="aiaf-bar"; bar.type="button"; bar.textContent="\u21bb New data from other devices \u2014 tap to update";
+    bar.onclick=function(){ location.reload(); }; document.body.appendChild(bar);
+  }
+  function toggleMenu(){
+    var m=document.getElementById("aiaf-menu"); if(m){ m.parentNode.removeChild(m); return; }
+    m=document.createElement("div"); m.id="aiaf-menu";
+    m.innerHTML="<div>"+esc(auth?("Signed in as "+(auth.email||"")):"Not signed in")+(stMsg?("<br>"+esc(stMsg)):"")+"</div>"
+      +"<button type='button' data-a='sync'>Sync now</button>"+(auth?"<button type='button' data-a='out'>Sign out</button><button type='button' data-a='wipe'>Sign out & remove data from this device</button>":"<button type='button' data-a='in'>Sign in</button>");
+    m.onclick=function(e){
+      var a=e.target.getAttribute("data-a"); if(!a) return; m.parentNode.removeChild(m);
+      if(a==="sync") syncNow();
+      else if(a==="in") showLogin();
+      else if(a==="out"||a==="wipe"){
+        if(a==="wipe" && !confirm("Remove this app's data from this device? It stays in the cloud.")) return;
+        auth=null; saveAuth();
+        if(a==="wipe"){ C.keys.forEach(function(k){ try{ rawRemove.call(LS,k); }catch(e){} }); snap={}; last="1970-01-01T00:00:00Z"; saveSnap(); }
+        location.reload();
+      }
+    };
+    document.body.appendChild(m);
+  }
+  function showLogin(){
+    if(!document.body||document.getElementById("aiaf-login")) return;
+    var d=document.createElement("div"); d.id="aiaf-login";
+    d.innerHTML="<form class='bx' novalidate><h2>"+esc(C.title||"Sign in")+"</h2><p>Sign in to share data between devices.<br>Gal si xogta loo wadaago.</p>"
+      +"<input id='aiaf-em' type='email' autocomplete='username' placeholder='Email'><input id='aiaf-pw' type='password' autocomplete='current-password' placeholder='Password'>"
+      +"<div class='er' id='aiaf-er'></div><button type='submit' id='aiaf-go'>Sign in</button></form>";
+    document.body.appendChild(d);
+    d.querySelector("form").onsubmit=function(e){
+      e.preventDefault();
+      var em=document.getElementById("aiaf-em").value.trim(), pw=document.getElementById("aiaf-pw").value, er=document.getElementById("aiaf-er"), bt=document.getElementById("aiaf-go");
+      if(!em||!pw){ er.textContent="Enter email and password."; return; }
+      bt.disabled=true; bt.textContent="Signing in\u2026"; er.textContent="";
+      signIn(em,pw).then(function(){ d.parentNode.removeChild(d); firstPull=true; syncNow(); },
+        function(x){ bt.disabled=false; bt.textContent="Sign in"; er.textContent=x.message||"Sign-in failed"; });
+    };
+  }
+  function boot(){
+    var stl=document.createElement("style"); stl.textContent=CSS; document.head.appendChild(stl);
+    chip=document.createElement("button"); chip.id="aiaf-chip"; chip.type="button"; chip.onclick=toggleMenu; document.body.appendChild(chip);
+    if(!auth){ setStatus("signin"); showLogin(); return; }
+    syncNow();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot); else boot();
+  setInterval(function(){ if(!document.hidden && auth) syncNow(); },20000);
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden && auth) syncNow(); });
+  window.addEventListener("online",function(){ if(auth) syncNow(); });
+  window.__aiafSync={ now:syncNow, state:function(){ return {st:st,msg:stMsg,auth:!!auth,last:last,snap:Object.keys(snap).length}; } };
+})();
+</script></head>
 <body>
 <header>
 <h1>Sales Book</h1>
@@ -148,5 +374,5 @@ function init(){
 }
 window.onload=init;
 </script>
-<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v1 · 29 Sep 2026</div></body>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v2 · 30 Sep 2026</div></body>
 </html>
