@@ -7,11 +7,11 @@
 <style>
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;font-family:Inter,Helvetica,Arial,sans-serif;background:#f5f7fa;color:#212b36;height:100%}
-header{height:56px;background:#fff;display:flex;align-items:center;padding:0 16px;box-shadow:0 2px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:10}
-header h1{flex:1;font-size:20px;font-weight:600;margin:0}
+header{background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;box-shadow:0 2px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:10}
+header h1{flex:1 1 100%;font-size:20px;font-weight:600;margin:0;padding-right:96px}
 select, input[type=date]{font-size:16px;padding:8px;border:1px solid #ccc;border-radius:8px;background:#fff;appearance:none}
-#branchSelect{margin-right:8px}
-#dateInput{width:120px}
+#branchSelect{flex:3 1 0;min-width:0;width:auto}
+#dateInput{flex:2 1 0;min-width:0;width:auto;min-height:40px}
 .main{padding:16px;display:flex;flex-direction:column;gap:16px;max-width:420px;margin:auto}
 .card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 label{display:block;font-size:14px;color:#637381;margin-bottom:4px}
@@ -30,9 +30,14 @@ button.secondary{background:#4a90e2}
 .totals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .totals div{background:#e0f0ff;padding:8px;border-radius:8px;text-align:center}
 textarea{height:80px}
+.payrow{display:flex;flex-wrap:wrap;gap:16px;margin:4px 0 12px}
+.payrow label{display:flex;align-items:center;gap:6px;margin:0;font-size:16px;color:#212b36}
+.payrow input[type=radio]{width:auto;margin:0;padding:0}
+.totals .grand{grid-column:1 / -1;background:#1f4f85;color:#fff;font-weight:600}
+.totals .grand div{background:none;padding:2px 0}
 @media (max-width:375px){header h1{font-size:18px}}
 </style>
-<meta name="aiaf-version" content="v1 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f4f85"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kharash Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"kharash-book","keys":["kharash_v1"],"title":"Kharash Book"};</script><script>(function(){
+<meta name="aiaf-version" content="v2 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f4f85"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kharash Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"kharash-book","keys":["kharash_v1"],"title":"Kharash Book"};</script><script>(function(){
   var C=window.__AIAF_SYNC;
   if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
   var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
@@ -424,11 +429,11 @@ textarea{height:80px}
 <label>Description<input id="descInput" type="text"></label>
 <label>Amount (USD)<input id="amtInput" type="number" min="0" step="0.01"></label>
 <label>Category<select id="catSelect"><option>Rent</option><option>Electricity</option><option>Transport</option><option>Salary</option><option>Other</option></select></label>
-<div>Payment<br>
+<div>Payment<div class="payrow">
 <label><input type="radio" name="pay" value="Cash" checked> Cash</label>
 <label><input type="radio" name="pay" value="Zaad"> Zaad</label>
 <label><input type="radio" name="pay" value="eDahab"> eDahab</label>
-</div>
+</div></div>
 <button id="addBtn">Add</button>
 </div>
 <div class="card" id="listCard"><h2 style="margin:0 0 8px;font-size:20px;font-weight:600">Expenses</h2><div id="expenseList"></div></div>
@@ -444,11 +449,14 @@ textarea{height:80px}
 <script>
 const STORAGE='kharash_v1';
 let D={branches:[],expenses:[]};
+let curBranch='';
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function load(){try{D=JSON.parse(localStorage.getItem(STORAGE))||{};}catch(e){D={};}if(!Array.isArray(D.branches))D.branches=[];if(!Array.isArray(D.expenses))D.expenses=[];}
 function save(){localStorage.setItem(STORAGE,JSON.stringify(D));}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function renderBranches(){
   const sel=document.getElementById('branchSelect');
+  const prev=sel.value||curBranch;
   sel.innerHTML='';
   D.branches.forEach(b=>{
     const o=document.createElement('option');
@@ -456,9 +464,10 @@ function renderBranches(){
     o.textContent=b;
     sel.appendChild(o);
   });
-  // pre‑select first if none selected
-  if(!sel.value && sel.options.length) sel.value=sel.options[0].value;
+  if(prev && D.branches.indexOf(prev)!==-1) sel.value=prev;
+  else if(sel.options.length) sel.value=sel.options[0].value;
   applyStaffFilter();
+  curBranch=sel.value;
 }
 function applyStaffFilter(){
   if(window.__aiafMe&&window.__aiafMe.role==='staff'){
@@ -529,13 +538,15 @@ function renderTotals(){
     d.appendChild(amount);
     grid.appendChild(d);
   });
-  // separate cells for label and amount
-  const labelDiv=document.createElement('div');
-  labelDiv.textContent='Total';
-  const amountDiv=document.createElement('div');
-  amountDiv.textContent=`$${total.toFixed(2)}`;
-  grid.appendChild(labelDiv);
-  grid.appendChild(amountDiv);
+  const g=document.createElement('div');
+  g.className='grand';
+  const gl=document.createElement('div');
+  gl.textContent='Total';
+  const ga=document.createElement('div');
+  ga.textContent='$'+total.toFixed(2);
+  g.appendChild(gl);
+  g.appendChild(ga);
+  grid.appendChild(g);
 }
 function renderAll(){
   renderBranches();
@@ -553,13 +564,13 @@ document.getElementById('addBtn').onclick=()=>{
   const amt=Number(amtStr);
   if(!branch||!date||!amtStr) return alert('Fill branch, date, amount');
   if(!(amt>0)) return alert('Amount must be a positive number');
-  D.expenses.push({id:uid(),branch,date,desc,amount:amtStr,category:cat,payment:pay});
+  D.expenses.push({id:uid(),branch,date,desc,amount:Math.round(amt*100)/100,category:cat,payment:pay});
   save();
   renderAll();
   document.getElementById('descInput').value='';
   document.getElementById('amtInput').value='';
 };
-document.getElementById('branchSelect').onchange=renderAll;
+document.getElementById('branchSelect').onchange=function(){curBranch=this.value;renderAll();};
 document.getElementById('dateInput').onchange=renderAll;
 document.getElementById('saveBranches').onclick=()=>{
   D.branches=document.getElementById('branchesArea').value.split('\n').map(s=>s.trim()).filter(s=>s);
@@ -580,9 +591,10 @@ document.getElementById('tabSettings').onclick=()=>{
   document.getElementById('tabExpenses').classList.remove('active');
 };
 load();
+if(!document.getElementById('dateInput').value) document.getElementById('dateInput').value=today();
 if(!D.branches.length) D.branches=['Main'];
 save();
 renderAll();
 </script>
-<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v1 · 30 Sep 2026</div></body>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v2 · 30 Sep 2026</div></body>
 </html>
