@@ -37,7 +37,7 @@ textarea{height:80px}
 .totals .grand div{background:none;padding:2px 0}
 @media (max-width:375px){header h1{font-size:18px}}
 </style>
-<meta name="aiaf-version" content="v2 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f4f85"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kharash Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"kharash-book","keys":["kharash_v1"],"title":"Kharash Book"};</script><script>(function(){
+<meta name="aiaf-version" content="v3 · 30 Sep 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1f4f85"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Kharash Book"><script>window.__AIAF_SYNC={"url":"https://dslpzpbasrfyproeusvl.supabase.co","anon":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbHB6cGJhc3JmeXByb2V1c3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyMzc2MDUsImV4cCI6MjA5ODgxMzYwNX0.4DbHXrpvbHW-jHKe-sHIqN4jfDIr9TOpdXm9udlIryY","space":"main","app":"kharash-book","keys":["kharash_v1"],"title":"Kharash Book"};</script><script>(function(){
   var C=window.__AIAF_SYNC;
   if(!C||!C.url||!C.anon||!C.keys||!C.keys.length) return;
   var BASE=String(C.url).replace(/\/+$/,""), LS=window.localStorage;
@@ -458,23 +458,27 @@ function renderBranches(){
   const sel=document.getElementById('branchSelect');
   const prev=sel.value||curBranch;
   sel.innerHTML='';
-  D.branches.forEach(b=>{
+  branchList().forEach(b=>{
     const o=document.createElement('option');
     o.value=b;
     o.textContent=b;
     sel.appendChild(o);
   });
-  if(prev && D.branches.indexOf(prev)!==-1) sel.value=prev;
+  if(prev && branchList().indexOf(prev)!==-1) sel.value=prev;
   else if(sel.options.length) sel.value=sel.options[0].value;
   applyStaffFilter();
   curBranch=sel.value;
 }
+/* the list shown; "Main" is only a placeholder and is never saved, so a new phone cannot add it to the shared list */
+function branchList(){ return D.branches.length ? D.branches : ['Main']; }
 function applyStaffFilter(){
   if(window.__aiafMe&&window.__aiafMe.role==='staff'){
     const allowed=window.__aiafMe.branches||[];
     const sel=document.getElementById('branchSelect');
-    Array.from(sel.options).forEach(o=>{o.hidden=!allowed.includes(o.value)});
-    if(!allowed.includes(sel.value)&&allowed.length) sel.value=allowed[0];
+    /* iPhone Safari ignores hidden options, so remove them */
+    Array.from(sel.options).forEach(o=>{ if(!allowed.includes(o.value)) o.remove(); });
+    allowed.forEach(b=>{ if(!Array.from(sel.options).some(o=>o.value===b)){ const o=document.createElement('option'); o.value=b; o.textContent=b; sel.appendChild(o); } });
+    if(!allowed.includes(sel.value)&&sel.options.length) sel.value=sel.options[0].value;
   }
 }
 function renderList(){
@@ -592,9 +596,7 @@ document.getElementById('tabSettings').onclick=()=>{
 };
 load();
 if(!document.getElementById('dateInput').value) document.getElementById('dateInput').value=today();
-if(!D.branches.length) D.branches=['Main'];
-save();
 renderAll();
 </script>
-<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v2 · 30 Sep 2026</div></body>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v3 · 30 Sep 2026</div></body>
 </html>
