@@ -1,0 +1,166 @@
+/* Design Tokens */
+:root {
+    /* Colors */
+    --primary: #1f4f85;
+    --secondary: #6c8ea5;
+    --background: #f5f7fa;
+    --surface: #ffffff;
+    --error: #d9534f;
+    --success: #5cb85c;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+
+    /* Typography */
+    --font-family: 'Inter', sans-serif;
+    --h1-size: 24px;
+    --h2-size: 20px;
+    --body-size: 16px;
+    --caption-size: 14px;
+
+    /* Spacing */
+    --spacing-4: 4px;
+    --spacing-8: 8px;
+    --spacing-12: 12px;
+    --spacing-16: 16px;
+    --spacing-24: 24px;
+    --spacing-32: 32px;
+
+    /* Radius */
+    --radius: 8px;
+}
+
+/* Global Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: var(--font-family);
+    font-size: var(--body-size);
+    color: var(--text-primary);
+    background-color: var(--background);
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--spacing-16);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16);
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    background-color: var(--primary);
+    color: var(--surface);
+    font-size: var(--h1-size);
+    font-weight: 600;
+    border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Task Input */
+.task-input {
+    display: flex;
+    gap: var(--spacing-8);
+    margin: var(--spacing-16) 0;
+}
+
+.task-input input {
+    flex: 1;
+    padding: var(--spacing-8);
+    border: 1px solid var(--secondary);
+    border-radius: var(--radius);
+    font-family: var(--font-family);
+    font-size: inherit;
+}
+
+.task-input button {
+    padding: var(--spacing-8) var(--spacing-12);
+    background-color: var(--primary);
+    color: var(--surface);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: inherit;
+    min-height: 48px; /* touch target */
+}
+
+/* Task List */
+.task-list {
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: var(--surface);
+    border: 1px solid var(--secondary);
+    border-radius: var(--radius);
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-12);
+    border-bottom: 1px solid var(--secondary);
+}
+
+.task-item:last-child {
+    border-bottom: none;
+}
+
+.task-item .task-text {
+    flex: 1;
+    cursor: pointer;
+}
+
+.task-item.completed .task-text {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.task-item button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--error);
+    font-size: 1.2rem;
+    min-width: 48px; /* touch target */
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: var(--spacing-12);
+    font-size: var(--caption-size);
+    color: var(--text-secondary);
+}
+
+/* Responsive Typography */
+@media (max-width: 1023px) {
+    :root {
+        --body-size: 15px;
+    }
+}
+
+@media (max-width: 599px) {
+    :root {
+        --body-size: 14px;
+    }
+    .task-input button {
+        min-height: 48px; /* ensure touch target */
+    }
+    .task-item button {
+        min-height: 48px;
+        min-width: 48px;
+    }
+}
