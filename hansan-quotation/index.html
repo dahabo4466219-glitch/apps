@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Hansan Quotation</title>
+<style>
+* ,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f8f9fa;color:#212529;font-size:14px}
+header{position:fixed;top:0;left:0;right:0;height:48px;background:#d92d20;color:#fff;display:flex;align-items:center;padding:0 16px;z-index:2}
+header h1{margin:0;font-size:24px;font-weight:700}
+main{padding-top:56px;padding-bottom:56px;max-width:480px;margin:auto}
+.tabbar{position:fixed;bottom:0;left:0;right:0;height:48px;background:#fff;border-top:1px solid #dee2e6;display:flex;z-index:2}
+.tab{flex:1;text-align:center;line-height:48px;color:#6c757d;font-size:14px;cursor:pointer}
+.tab.active{color:#d92d20}
+.btn{display:inline-block;padding:8px 16px;border-radius:6px;border:none;background:#0f2a4a;color:#fff;font-size:16px;cursor:pointer}
+.btn.secondary{background:transparent;border:1px solid #0f2a4a;color:#0f2a4a}
+.input{width:100%;border:1px solid #dee2e6;border-radius:6px;padding:8px;font-size:16px;margin:4px 0}
+.select{width:100%;border:1px solid #dee2e6;border-radius:6px;padding:8px;font-size:16px;margin:4px 0}
+.card{background:#fff;padding:8px;margin:4px 0;border:1px solid #dee2e6;border-radius:6px;display:flex;justify-content:space-between;align-items:center}
+.badge{background:#e9ecef;color:#212529;padding:2px 6px;border-radius:6px;font-size:12px}
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:3}
+.modal .box{background:#fff;padding:16px;border-radius:6px;max-width:90%}
+.hidden{display:none}
+</style>
+<meta name="aiaf-version" content="v1 · 10 Oct 2026"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f2a4a"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hansan Quotation"></head>
+<body>
+<header><h1>Hansan Electric</h1></header>
+<main id="app"></main>
+<div class="tabbar">
+<div class="tab" data-tab="products">Alaab</div>
+<div class="tab" data-tab="new">Xigasho Cusub</div>
+<div class="tab" data-tab="list">Xigashooyinka</div>
+</div>
+<script>
+const STORAGE_KEY='hansanquotation_v1'
+function esc(s){return String(s).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]))}
+let data;try{data=JSON.parse(localStorage.getItem(STORAGE_KEY))}catch(e){}
+if(!data||typeof data!=='object')data={products:[],quotes:[],branches:['Xero Awr','Borama','Ibrahim Dheere']}
+if(!Array.isArray(data.products))data.products=[]
+if(!Array.isArray(data.quotes))data.quotes=[]
+if(!Array.isArray(data.branches))data.branches=[]
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function allowedBranches(){var me=window.__aiafMe;return(me&&me.role==='staff')?(me.branches||[]):null}
+function render(){const app=document.getElementById('app');app.innerHTML='';if(currentTab==='products')renderProducts();else if(currentTab==='new')renderNewQuote();else renderQuoteList()}
+let currentTab='products'
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',e=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));e.target.classList.add('active');currentTab=e.target.dataset.tab;render()}))
+function renderProducts(){const app=document.getElementById('app');
+const search=document.createElement('input');search.className='input';search.placeholder='Raadi magaca';search.addEventListener('input',()=>{showProducts(search.value)})
+app.appendChild(search)
+const list=document.createElement('div');list.id='prodList';app.appendChild(list)
+const addBtn=document.createElement('button');addBtn.className='btn';addBtn.textContent='Ku dar Alaab';addBtn.onclick=()=>openProductModal();app.appendChild(addBtn)
+showProducts('')
+}
+function showProducts(q){const list=document.getElementById('prodList');list.innerHTML='';data.products.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())).forEach(p=>{
+ const card=document.createElement('div');card.className='card';card.innerHTML=`<span>${esc(p.name)}</span><span class="badge">${esc(p.category)}</span><span>$${p.price}</span>`
+ const edit=document.createElement('button');edit.textContent='✎';edit.style.border='none';edit.style.background='none';edit.onclick=()=>openProductModal(p)
+ const del=document.createElement('button');del.textContent='✖';del.style.border='none';del.style.background='none';del.onclick=()=>{if(confirm('Tirtir?')){data.products=data.products.filter(x=>x.id!==p.id);save();showProducts(q)}}
+ const ops=document.createElement('div');ops.appendChild(edit);ops.appendChild(del);card.appendChild(ops);list.appendChild(card)})}
+function openProductModal(prod){const modal=document.createElement('div');modal.className='modal';modal.innerHTML=`<div class="box"><h3>${prod?'Wax ka bedel':'Ku dar'} Alaab</h3><input id="pname" class="input" placeholder="Magaca" value="${prod?esc(prod.name):''}"><select id="pcat" class="select"><option>Chandelier</option><option>Wall light</option><option>Bulb</option><option>Other</option></select><input id="pprice" class="input" type="number" placeholder="Qiimaha USD" value="${prod?prod.price:''}"><button class="btn" id="psave">Kaydi</button> <button class="btn secondary" id="pcancel">Cancel</button></div>`
+ document.body.appendChild(modal)
+ if(prod){document.getElementById('pcat').value=prod.category}
+ document.getElementById('psave').onclick=()=>{
+  const name=document.getElementById('pname').value.trim();
+  const cat=document.getElementById('pcat').value;
+  const price=parseFloat(document.getElementById('pprice').value);
+  if(!name||isNaN(price)||price<=0){alert('Fadlan xog sax ah geli');return}
+  if(prod){prod.name=name;prod.category=cat;prod.price=price}else{data.products.push({id:uid(),name,category:cat,price})}
+  save();modal.remove();render();
+ }
+ document.getElementById('pcancel').onclick=()=>modal.remove()
+}
+function renderNewQuote(){const app=document.getElementById('app');
+ const form=document.createElement('div');
+ form.innerHTML=`<select id="branch" class="select"></select>
+<input id="cname" class="input" placeholder="Magaca Macaamiisha" required>
+<input id="cphone" class="input" placeholder="Telefoon" required>
+<div id="items"></div>
+<button class="btn" id="addItem">+ Shay</button>
+<label for="discount">Qiimo dhimis ($)</label>
+<input id="discount" class="input" type="number" placeholder="Qiimo dhimis USD (ikhtiyaari)" value="0">
+<div id="total" style="margin:8px 0;font-weight:600">Wadarta: $0</div>
+<button class="btn" id="saveQuote">Kaydi Xigasho</button>`
+ app.appendChild(form)
+ const branchSel=document.getElementById('branch');
+ const allowed=allowedBranches();
+ const branchList=allowed===null?data.branches:allowed.filter(b=>data.branches.includes(b))
+ if(branchList.length===0){branchSel.innerHTML='<option>Main</option>';branchSel.disabled=true}
+ else{branchSel.innerHTML=branchList.map(b=>`<option>${esc(b)}</option>`).join('')}
+ document.getElementById('addItem').onclick=addQuoteItem
+document.getElementById('saveQuote').onclick=saveQuote
+document.getElementById('discount').addEventListener('input',updateTotal)
+updateTotal()
+}
+function addQuoteItem(){if(!data.products.length){alert('Marka hore alaab ku dar (tab-ka Alaab)');return}
+const items=document.getElementById('items');
+ const idx=items.children.length;const row=document.createElement('div');row.className='card';row.innerHTML=`<select class="select prodSel"></select><input class="input qty" type="number" placeholder="Qty" min="1" value="1"><span class="lineTot">$0</span><button class="btn secondary" style="padding:4px" onclick="this.parentElement.remove();updateTotal()">✖</button>`
+ items.appendChild(row)
+ const sel=row.querySelector('.prodSel');
+ sel.innerHTML=data.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')
+ sel.onchange=updateTotal;row.querySelector('.qty').oninput=updateTotal
+ updateTotal()
+}
+function updateTotal(){let sum=0;document.querySelectorAll('#items .card').forEach(r=>{
+const pid=r.querySelector('.prodSel').value;const prod=data.products.find(p=>p.id===pid);if(!prod)return;const qty=parseInt(r.querySelector('.qty').value)||0;const line=prod.price*qty;r.querySelector('.lineTot').textContent='$'+line.toFixed(2);sum+=line})
+let disc=parseFloat(document.getElementById('discount').value)||0;
+if(disc<0) disc=0;
+const t=document.getElementById('total');
+if(disc>sum){t.textContent='Wadarta: $0.00 — qiimo dhimisku wuu ka badan yahay wadarta';t.style.color='#d92d20'}
+else{t.textContent='Wadarta: $'+(sum-disc).toFixed(2);t.style.color=''}}
+function saveQuote(){const branch=document.getElementById('branch').value;const name=document.getElementById('cname').value.trim();const phone=document.getElementById('cphone').value.trim();if(!name||!phone){alert('Macluumaadka macaamiisha waa in la buuxiyaa');return}
+const items=[];let valid=true;document.querySelectorAll('#items .card').forEach(r=>{
+const pid=r.querySelector('.prodSel').value;const qty=parseInt(r.querySelector('.qty').value);if(!pid||isNaN(qty)||qty<=0){valid=false;return}
+const prod=data.products.find(p=>p.id===pid);items.push({productId:pid,productName:prod.name,unitPrice:prod.price,qty})})
+if(!valid||items.length===0){alert('Fadlan alaabo sax ah ku dar');return}
+const disc=parseFloat(document.getElementById('discount').value)||0; const subtotal=items.reduce((a,i)=>a+i.unitPrice*i.qty,0);
+if(disc<0||disc>subtotal){alert('Qiimo dhimis waa inuu ahaadaa 0 iyo wadarta guud dhexdeeda');return}
+const total=subtotal-disc;
+if(!data.nextNo){data.nextNo=data.quotes.reduce((m,q)=>Math.max(m,parseInt(String(q.number).replace(/\D/g,''))||0),0)+1}
+const num='Q-'+String(data.nextNo).padStart(4,'0');data.nextNo++
+data.quotes.unshift({id:uid(),number:num,branch,customer:{name,phone},items,total:total.toFixed(2),date:new Date().toISOString()})
+save();currentTab='list';
+document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+document.querySelector('.tab[data-tab="list"]').classList.add('active');
+render();}
+function renderQuoteList(){const app=document.getElementById('app');
+ const list=document.createElement('div');
+ data.quotes.forEach(q=>{
+  const card=document.createElement('div');card.className='card';card.innerHTML=`<div><strong>${esc(q.number)}</strong> ${new Date(q.date).toLocaleDateString()}<br>${esc(q.customer.name)}</div><div>$${q.total}<button class="btn secondary" style="padding:4px" data-id="${q.id}">✖</button></div>`
+  card.querySelector('button').onclick=()=>{if(confirm('Tirtir xigashada?')){data.quotes=data.quotes.filter(x=>x.id!==q.id);save();render()}}
+  list.appendChild(card)
+ })
+ app.appendChild(list)
+}
+window.addEventListener('aiaf-me',()=>{if(currentTab==='new')render()})
+document.querySelector('.tab[data-tab="'+currentTab+'"]').classList.add('active')
+render()
+</script>
+<script>try{if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}}catch(e){}</script><div id="aiaf-ver" style="text-align:center;font:11px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#9aa3ad;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px))">v1 · 10 Oct 2026</div></body>
+</html>
